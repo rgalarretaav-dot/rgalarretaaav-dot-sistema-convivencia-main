@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crear Cuenta - Convivencia Escolar</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/estilos.css">
+</head>
+<body class="login-body">
+
+    <!-- ANIMACIÓN SPIDER-MAN AL ENTRAR AL REGISTRO -->
+    <div class="spidey-overlay active" id="spidey-loader">
+        <div class="web-bg"></div>
+        <div class="spidey-eyes">
+            <div class="eye left-eye"></div>
+            <div class="eye right-eye"></div>
+        </div>
+        <div class="spidey-text">¡A REGISTRARSE!</div>
+    </div>
+
+    <!-- ESFERAS DE FONDO -->
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+    <div class="orb orb-4"></div>
+
+    <!-- TARJETA DE REGISTRO -->
+    <div class="login-container">
+        <h2>📝 Crear Cuenta</h2>
+        <p>Regístrate para gestionar la convivencia</p>
+        
+        <form id="registroForm">
+            <div class="input-group">
+                <input type="text" id="nombre" placeholder="Nombre completo" required>
+            </div>
+            <div class="input-group">
+                <input type="email" id="email" placeholder="Correo electrónico" required>
+            </div>
+            
+            <div class="input-group">
+                <select id="rol" required>
+                    <option value="" disabled selected>Selecciona tu cargo...</option>
+                    <!-- DIRECTOR ELIMINADO -->
+                    <option value="Subdirector">Subdirector</option>
+                    <option value="Coordinador">Coordinador</option>
+                    <option value="Profesor">Profesor</option>
+                    <option value="Profesora">Profesora</option>
+                    <option value="TOE">TOE</option>
+                    <option value="Auxiliar">Auxiliar</option>
+                </select>
+            </div>
+
+            <div class="input-group">
+                <input type="password" id="password" placeholder="Contraseña" required>
+            </div>
+            <div class="input-group">
+                <input type="password" id="confirmPassword" placeholder="Confirmar contraseña" required>
+            </div>
+            
+            <button type="button" onclick="registrarUsuario()">Registrarse</button>
+            
+            <p class="link-registro">¿Ya tienes cuenta? <a href="index.html">Inicia sesión aquí</a></p>
+        </form>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- NUEVA ANIMACIÓN: JARVIS (AL REGISTRAR)     -->
+    <!-- ========================================== -->
+    <div class="jarvis-overlay" id="jarvis-loader">
+        <div class="hud-ring ring-1"></div>
+        <div class="hud-ring ring-2"></div>
+        <div class="hud-ring ring-3"></div>
+        <div class="arc-reactor"></div>
+        <div class="scan-line"></div>
+        <h1 class="jarvis-text" id="jarvis-text">INICIANDO JARVIS...</h1>
+    </div>
+
+    <!-- SCRIPT DE SEGURIDAD Y ANIMACIONES -->
+    <script>
+        window.addEventListener('load', () => {
+            // 1. Quitar la animación de Spider-Man
+            setTimeout(() => {
+                const loader = document.getElementById('spidey-loader');
+                if(loader) loader.classList.remove('active');
+            }, 2500);
+
+            // 2. Lógica del Administrador Único
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('admin') === 'true') {
+                const selectRol = document.getElementById('rol');
+                if(selectRol) {
+                    // Magia: Creamos la opción de Administrador solo si venimos del botón secreto
+                    const adminOption = document.createElement('option');
+                    adminOption.value = 'Administrador';
+                    adminOption.text = 'Administrador';
+                    selectRol.add(adminOption);
+
+                    // Lo seleccionamos y bloqueamos
+                    selectRol.value = 'Administrador'; 
+                    selectRol.disabled = true; 
+                    
+                    // Le cambiamos el color para que se vea que está bloqueado
+                    selectRol.style.opacity = '0.6';
+                    selectRol.style.cursor = 'not-allowed';
+                }
+            }
+        });
+    </script>
+
+    <!-- Librerías -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/app2.js"></script>
+</body>
+</html>

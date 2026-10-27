@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reportes - I.E. 80829 José Olaya</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/estilos.css">
+</head>
+<body class="panel-body" onload="cargarDatosUsuario(); cargarTablaIncidentes();">
+
+    <div id="toast" class="toast">✅ Mensaje</div>
+
+    <header class="topbar">
+        <div class="logo-area">
+            <img src="logo.png" alt="Logo José Olaya" class="logo-img">
+            <h2>🏫 Sistema de Convivencia I.E. N° 80829 "José Olaya"</h2>
+        </div>
+        <div class="user-info">
+            <span id="nombreUsuario">Cargando...</span>
+            <span id="rolUsuario" class="badge-rol">...</span>
+            <button id="btn-admin" class="btn-admin" style="display: none;" onclick="abrirModalAdmin()">⚙️ Administrar Usuarios</button>
+            <button class="btn-salir" onclick="cerrarSesion()">Cerrar Sesión</button>
+        </div>
+    </header>
+
+    <main class="main-content">
+        
+        <div class="stats-container">
+            <div class="stat-card"><h3>Total Incidentes</h3><p id="stat-total">0</p></div>
+            <div class="stat-card borde-verde"><h3>🟢 Faltas Leves</h3><p id="stat-verde">0</p></div>
+            <div class="stat-card borde-amarillo"><h3>🟡 Faltas Graves</h3><p id="stat-amarillo">0</p></div>
+            <div class="stat-card borde-rojo"><h3>🔴 Faltas Muy Graves</h3><p id="stat-rojo">0</p></div>
+        </div>
+
+        <div class="header-tabla">
+            <h2>📋 Resumen de Estudiantes</h2>
+            <div style="display: flex; gap: 10px;">
+                <input type="text" id="buscador" class="buscador" placeholder="🔍 Buscar estudiante..." onkeyup="filtrarTabla()">
+                <button class="btn-nuevo" style="background:#217346;" onclick="exportarExcel()">📥 Descargar Excel</button>
+                <button class="btn-nuevo" onclick="abrirModal()">+ Registrar Incidente</button>
+            </div>
+        </div>
+
+        <div class="tabla-contenedor">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Estudiante</th>
+                        <th>Grado</th>
+                        <th>Sección</th>
+                        <th>Total Faltas</th>
+                        <th>Semáforo Actual</th>
+                        <th>Estado de Matrícula</th> <!-- Título mantenido como pediste -->
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="cuerpoTabla"></tbody>
+            </table>
+        </div>
+    </main>
+
+    <!-- MODAL: REGISTRAR INCIDENTE -->
+    <div class="modal-overlay" id="modalIncidente">
+        <div class="modal-content">
+            <h2>🚨 Registrar Nuevo Incidente</h2>
+            <div class="form-group">
+                <label>Apellidos y Nombres del Estudiante:</label>
+                <input type="text" id="nombreEstudiante" placeholder="Escriba el nombre completo..." required onblur="autocompletarCorreo()">
+            </div>
+            <div class="form-group">
+                <label>Grado:</label>
+                <input type="text" id="gradoEstudiante" placeholder="Ej. 3ro..." required onblur="autocompletarCorreo()">
+            </div>
+            <div class="form-group">
+                <label>Sección:</label>
+                <input type="text" id="seccionEstudiante" placeholder="Ej. A..." required onblur="autocompletarCorreo()">
+            </div>
+            <div class="form-group">
+                <label>Correo del Apoderado (Notificación):</label>
+                <input type="email" id="correoApoderado" placeholder="ejemplo@correo.com" required>
+            </div>
+            <div class="form-group">
+                <label>Número de Incidente:</label>
+                <input type="text" id="numeroIncidente" placeholder="Ej. 1, 2..." required>
+            </div>
+            <div class="form-group">
+                <label>Tipificación de la Falta:</label>
+                <select id="tipoFalta">
+                    <option>LEVE</option>
+                    <option>GRAVE</option>
+                    <option>MUY GRAVE</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Fecha del Incidente:</label>
+                <input type="date" id="fechaIncidente">
+            </div>
+            <div class="form-group">
+                <label>Persona que Reporta:</label>
+                <input type="text" id="personaReporta" placeholder="Ej. Prof. Gómez...">
+            </div>
+            <div class="form-group">
+                <label>Descripción del hecho:</label>
+                <textarea id="descripcionIncidente" rows="3" placeholder="Escriba lo que sucedió..."></textarea>
+            </div>
+            <div class="modal-botones">
+                <button class="btn-cancelar" onclick="cerrarModal()">Cancelar</button>
+                <button class="btn-guardar" onclick="guardarIncidente()">Guardar Incidente</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: EDITAR ESTUDIANTE / INCIDENTE -->
+    <div class="modal-overlay" id="modalEditarIncidente">
+        <div class="modal-content">
+            <h2>✏️ Editar Datos del Alumno</h2>
+            <p style="color:#64748b; font-size:0.85rem; margin-bottom:15px;">Se actualizarán todos los incidentes de este alumno.</p>
+            <input type="hidden" id="editIdIncidente">
+            <div class="form-group">
+                <label>Estudiante:</label>
+                <input type="text" id="editNombreEstudiante" required>
+            </div>
+            <div style="display: flex; gap: 10px;">
+                <div class="form-group" style="flex: 1;">
+                    <label>Grado:</label>
+                    <input type="text" id="editGradoEstudiante" required>
+                </div>
+                <div class="form-group" style="flex: 1;">
+                    <label>Sección:</label>
+                    <input type="text" id="editSeccionEstudiante" required>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Correo Apoderado:</label>
+                <input type="email" id="editCorreoApoderado" required>
+            </div>
+            <div class="form-group">
+                <label>N° Incidente:</label>
+                <input type="text" id="editNumeroIncidente" required>
+            </div>
+            <div class="form-group">
+                <label>Tipificación de la Falta:</label>
+                <select id="editTipoFalta">
+                    <option>LEVE</option>
+                    <option>GRAVE</option>
+                    <option>MUY GRAVE</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Fecha:</label>
+                <input type="date" id="editFechaIncidente">
+            </div>
+            <div class="form-group">
+                <label>Persona que Reporta:</label>
+                <input type="text" id="editPersonaReporta">
+            </div>
+            <div class="form-group">
+                <label>Descripción:</label>
+                <textarea id="editDescripcionIncidente" rows="3"></textarea>
+            </div>
+            <div class="modal-botones">
+                <button class="btn-cancelar" onclick="cerrarModalEditarIncidente()">Cancelar</button>
+                <button class="btn-guardar" style="background:#f59e0b;" onclick="guardarEdicionIncidente()">Actualizar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: HISTORIAL -->
+    <div class="modal-overlay" id="modalHistorial">
+        <div class="modal-content" style="width: 800px;">
+            <h2 id="tituloHistorial" style="color: #1e3a8a; margin-bottom: 20px;">📋 Historial</h2>
+            <div style="max-height: 400px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 8px;">
+                <table style="width: 100%; border-collapse: collapse;">
+                    <thead>
+                        <tr style="background: #f8fafc; color: #1e3a8a; border-bottom: 2px solid #e2e8f0;">
+                            <th style="padding: 12px; text-align: left;">N°</th>
+                            <th style="padding: 12px; text-align: left;">Falta</th>
+                            <th style="padding: 12px; text-align: left;">Fecha</th>
+                            <th style="padding: 12px; text-align: left;">Reporta</th>
+                            <th style="padding: 12px; text-align: left;">Descripción</th>
+                            <th style="padding: 12px; text-align: left;">Estado Matrícula</th> 
+                            <th style="padding: 12px; text-align: center;">Acción</th>
+                        </tr>
+                    </thead>
+                    <tbody id="cuerpoHistorial"></tbody>
+                </table>
+            </div>
+            <div class="modal-botones" style="margin-top: 20px;">
+                <button class="btn-cancelar" onclick="cerrarModalHistorial()">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: ADMINISTRACIÓN DE USUARIOS -->
+    <div class="modal-overlay" id="modalAdmin">
+        <div class="modal-content" style="width: 700px;">
+            <h2>⚙️ Administración de Permisos</h2>
+            <p style="color: #64748b; margin-bottom: 20px; font-size: 0.9rem;">Activa permisos o elimina usuarios del sistema.</p>
+            <div style="max-height: 400px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 8px;">
+                <table style="width: 100%; border-collapse: collapse;">
+                    <thead>
+                        <tr style="background: #f8fafc; color: #1e3a8a; border-bottom: 2px solid #e2e8f0;">
+                            <th style="padding: 12px; text-align: left;">Usuario</th>
+                            <th style="padding: 12px; text-align: left;">Rol</th>
+                            <th style="padding: 12px; text-align: center;">¿Puede borrar?</th>
+                            <th style="padding: 12px; text-align: center;">Eliminar</th>
+                        </tr>
+                    </thead>
+                    <tbody id="cuerpoAdmin"></tbody>
+                </table>
+            </div>
+            <div class="modal-botones" style="margin-top: 20px;">
+                <button class="btn-cancelar" onclick="cerrarModalAdmin()">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: CONFIRMACIÓN DE CORREO -->
+    <div class="modal-overlay" id="modalConfirmarCorreo" style="background: rgba(0,0,0,0.8); backdrop-filter: blur(8px);">
+        <div class="modal-content confirm-modal">
+            <div class="confirm-icon">✉️</div>
+            <h2>¿Enviar Notificación?</h2>
+            <p style="color: #475569; margin-bottom: 20px;">Se ha registrado una falta <strong>GRAVE</strong>.<br>¿Deseas enviar el correo de alerta al apoderado?</p>
+            <div class="modal-botones" style="justify-content: center;">
+                <button class="btn-cancelar" style="border: 1px solid #cbd5e1;" onclick="resolverConfirmacion(false)">No, perdonar falta</button>
+                <button class="btn-guardar" style="background: linear-gradient(135deg, #22c55e, #16a34a); box-shadow: 0 5px 15px rgba(34, 197, 94, 0.4);" onclick="resolverConfirmacion(true)">Sí, enviar correo</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+    <script src="js/app2.js"></script>
+</body>
+</html>

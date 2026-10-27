@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Iniciar Sesión - Convivencia Escolar</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/estilos.css">
+</head>
+<body class="login-body">
+
+    <!-- Esferas animadas de fondo -->
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+    <div class="orb orb-4"></div>
+
+    <div class="login-container">
+        <h2>🔐 Iniciar Sesión</h2>
+        <p>Sistema de Convivencia Escolar</p>
+        
+        <form id="loginForm">
+            <div class="input-group">
+                <input type="email" id="email" placeholder="Correo electrónico" required>
+            </div>
+            <div class="input-group">
+                <input type="password" id="password" placeholder="Contraseña" required>
+            </div>
+            <button type="button" onclick="iniciarSesion()">Ingresar</button>
+            
+            <!-- ENLACE PARA CREAR AUXILIAR/SUBDIRECTOR -->
+            <p class="link-registro">¿No tienes cuenta? <a href="registro.html">Crear una aquí</a></p>
+            
+            <!-- NUEVO: ENLACE SECRETO PARA CREAR AL ADMINISTRADOR -->
+            <a href="#" class="link-admin-secreto" onclick="solicitarAdmin(event)">🔑 Registrar Administrador Único</a>
+        </form>
+    </div>
+
+    <!-- ANIMACIÓN DE LOGIN (Hacker/Spider) -->
+    <div class="epic-overlay" id="epic-loader">
+        <div class="matrix-rain" id="matrix-rain"></div>
+        <div class="web-shockwave web-red"></div>
+        <div class="web-shockwave web-blue"></div>
+        <div class="hacker-text" id="hacker-text">BYPASSING SECURITY...</div>
+        <h1 class="hero-text-epic" id="epic-text">¡ACCESO CONCEDIDO!</h1>
+    </div>
+
+    <!-- Librerías -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/app2.js"></script>
+</body>
+</html>
