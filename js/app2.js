@@ -139,6 +139,7 @@ function cerrarModal() {
     document.getElementById('gradoEstudiante').value = '';
     document.getElementById('seccionEstudiante').value = '';
     document.getElementById('correoApoderado').value = '';
+    document.getElementById('telefonoApoderado').value = ''; // Limpiamos el teléfono
     document.getElementById('numeroIncidente').value = '';
     document.getElementById('fechaIncidente').value = '';
     document.getElementById('personaReporta').value = '';
@@ -151,6 +152,7 @@ function autocompletarCorreo() {
     const gradoInput = document.getElementById('gradoEstudiante'); 
     const seccionInput = document.getElementById('seccionEstudiante');
     const correoInput = document.getElementById('correoApoderado');
+    const telefonoInput = document.getElementById('telefonoApoderado');
     const numeroInput = document.getElementById('numeroIncidente');
 
     if (!nombreInput) return;
@@ -166,6 +168,7 @@ function autocompletarCorreo() {
         if (!gradoInput.value && alumnoExistente.grado) gradoInput.value = alumnoExistente.grado;
         if (!seccionInput.value && alumnoExistente.seccion) seccionInput.value = alumnoExistente.seccion;
         if (alumnoExistente.correo_apoderado && !correoInput.value) correoInput.value = alumnoExistente.correo_apoderado;
+        if (alumnoExistente.telefono_apoderado && !telefonoInput.value) telefonoInput.value = alumnoExistente.telefono_apoderado;
 
         let maxNumero = 0;
         coincidencias.forEach(rep => {
@@ -205,6 +208,7 @@ async function guardarIncidente() {
     const grado = document.getElementById('gradoEstudiante').value;
     const seccion = document.getElementById('seccionEstudiante').value;
     const correoApoderado = document.getElementById('correoApoderado').value;
+    const telefonoApoderado = document.getElementById('telefonoApoderado').value;
     const numero = document.getElementById('numeroIncidente').value;
     const tipo = document.getElementById('tipoFalta').value;
     const fecha = document.getElementById('fechaIncidente').value;
@@ -219,7 +223,7 @@ async function guardarIncidente() {
 
     try {
         const { error } = await supabaseClient.from('incidentes').insert([{ 
-            estudiante, grado, seccion, numero_incidente: numero, tipo_falta: tipo, fecha, persona_reporta: persona, descripcion, correo_apoderado: correoApoderado, estado: estadoInicial
+            estudiante, grado, seccion, numero_incidente: numero, tipo_falta: tipo, fecha, persona_reporta: persona, descripcion, correo_apoderado: correoApoderado, estado: estadoInicial, telefono_apoderado: telefonoApoderado 
         }]);
         if (error) throw error;
         
@@ -227,11 +231,13 @@ async function guardarIncidente() {
 
         if (tipo === 'MUY GRAVE') {
             enviarCorreoNotificacion(estudiante, correoApoderado, tipo, fecha, descripcion, persona);
+            if(telefonoApoderado) enviarWhatsAppGratis(estudiante, telefonoApoderado, tipo, fecha, descripcion, persona);
         } else if (tipo === 'GRAVE') {
             cerrarModal(); 
             const deseaEnviar = await mostrarConfirmacionCorreo();
             if (deseaEnviar) {
                 enviarCorreoNotificacion(estudiante, correoApoderado, tipo, fecha, descripcion, persona);
+                if(telefonoApoderado) enviarWhatsAppGratis(estudiante, telefonoApoderado, tipo, fecha, descripcion, persona);
             } else {
                 mostrarToast("🚫 Correo no enviado (Falta perdonada).", "error");
             }
@@ -255,6 +261,35 @@ function enviarCorreoNotificacion(estudiante, correo, tipo, fecha, descripcion, 
     emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, parametros)
         .then(function() { mostrarToast("✅ Correo enviado al apoderado"); }, 
               function(error) { mostrarToast("❌ Error al enviar el correo", "error"); });
+}
+
+// --- FUNCIÓN: ENVIAR WHATSAPP GRATIS (CON DISEÑO) ---
+function enviarWhatsAppGratis(estudiante, telefono, tipo, fecha, descripcion, persona) {
+    let num = telefono.replace(/\D/g, '');
+    
+    if (num.length === 9) {
+        num = '51' + num;
+    }
+
+    // DISEÑO BONITO DEL MENSAJE
+    const mensaje = `━━━━━━━━━━━━━━━━━━━━\n` +
+                    `📌 *REPORTE DE INCIDENTE*\n` +
+                    `🏫 *I.E. N° 80829 "José Olaya"*\n` +
+                    `━━━━━━━━━━━━━━━━━━━━\n\n` +
+                    `Estimado apoderado, se ha registrado un incidente en nuestra institución para su menor hijo(a):\n\n` +
+                    `👤 *Estudiante:* ${estudiante}\n` +
+                    `📅 *Fecha:* ${formatearFecha(fecha)}\n` +
+                    `⚠️ *Falta:* ${tipo}\n` +
+                    `📝 *Motivo:* ${descripcion}\n` +
+                    `🧑‍🏫 *Reporta:* ${persona}\n\n` +
+                    `━━━━━━━━━━━━━━━━━━━━\n` +
+                    `🚨 *ACCIÓN REQUERIDA:*\n` +
+                    `Por favor, apersónese a la brevedad al colegio para coordinar las acciones correspondientes.\n\n` +
+                    `_Este es un mensaje automático, por favor no responder._`;
+
+    const url = `https://wa.me/${num}?text=${encodeURIComponent(mensaje)}`;
+    window.open(url, '_blank');
+    mostrarToast("📲 WhatsApp abierto. Clic en Enviar.");
 }
 
 async function cargarTablaIncidentes() {
@@ -415,6 +450,7 @@ function abrirModalEditarAlumno(nombre, grado, seccion) {
     document.getElementById('editGradoEstudiante').value = primerIncidente.grado || '';
     document.getElementById('editSeccionEstudiante').value = primerIncidente.seccion || '';
     document.getElementById('editCorreoApoderado').value = primerIncidente.correo_apoderado || '';
+    document.getElementById('editTelefonoApoderado').value = primerIncidente.telefono_apoderado || '';
     document.getElementById('editNumeroIncidente').value = primerIncidente.numero_incidente;
     document.getElementById('editTipoFalta').value = primerIncidente.tipo_falta;
     document.getElementById('editFechaIncidente').value = primerIncidente.fecha;
@@ -434,6 +470,7 @@ async function guardarEdicionIncidente() {
     const nuevoGrado = document.getElementById('editGradoEstudiante').value;
     const nuevaSeccion = document.getElementById('editSeccionEstudiante').value;
     const nuevoCorreo = document.getElementById('editCorreoApoderado').value;
+    const nuevoTelefono = document.getElementById('editTelefonoApoderado').value;
     const nuevoNumero = document.getElementById('editNumeroIncidente').value;
     const nuevoTipo = document.getElementById('editTipoFalta').value;
     const nuevaFecha = document.getElementById('editFechaIncidente').value;
@@ -449,6 +486,7 @@ async function guardarEdicionIncidente() {
             .from('incidentes')
             .update({ 
                 estudiante: nuevoNombre, grado: nuevoGrado, seccion: nuevaSeccion, correo_apoderado: nuevoCorreo,
+                telefono_apoderado: nuevoTelefono,
                 numero_incidente: nuevoNumero, tipo_falta: nuevoTipo, fecha: nuevaFecha, persona_reporta: nuevaPersona, descripcion: nuevaDescripcion
             })
             .match({ 
@@ -591,7 +629,7 @@ function exportarExcel() {
     if (listaIncidentesGlobal.length === 0) return mostrarToast("No hay datos para exportar", "error");
 
     const estudiantes = {};
-    let maxIncidentes = 0; // Variable para contar cuántos incidentes tiene el alumno con más faltas
+    let maxIncidentes = 0;
 
     listaIncidentesGlobal.forEach(rep => {
         const nombre = rep.estudiante.trim();
@@ -616,7 +654,6 @@ function exportarExcel() {
 
         estudiantes[key].incidentes.push(rep);
         
-        // Actualizamos cuál es el máximo de incidentes
         if (estudiantes[key].incidentes.length > maxIncidentes) {
             maxIncidentes = estudiantes[key].incidentes.length;
         }
@@ -626,22 +663,20 @@ function exportarExcel() {
         else if (rep.tipo_falta === 'MUY GRAVE') estudiantes[key].muyGraves++;
     });
 
-    if (maxIncidentes === 0) maxIncidentes = 1; // Por seguridad
+    if (maxIncidentes === 0) maxIncidentes = 1;
 
     const datosExcel = [];
     
-    // Creamos los títulos dinámicamente
     let cabecera = ["APELLIDOS Y NOMBRES DEL ESTUDIANTE", "GRADO", "SECCIÓN", "ESTADO DE MATRÍCULA"];
     let subCabecera = ["", "", "", ""];
     
-    // Agregamos solo las columnas de incidentes necesarias
     for (let i = 1; i <= maxIncidentes; i++) {
         cabecera.push(`INCIDENTE ${i}`, "FECHA", "TIPIFICACIÓN DE LA FALTA", "PERSONA QUE REPORTA");
-        subCabecera.push("", "", "LEVE", ""); // El "LEVE" se alinea perfectamente
+        subCabecera.push("", "", "LEVE", "");
     }
     
-    cabecera.push("REPORTE FINAL", "CORREO DEL APODERADO");
-    subCabecera.push("", "");
+    cabecera.push("REPORTE FINAL", "CORREO DEL APODERADO", "TELÉFONO DEL APODERADO"); 
+    subCabecera.push("", "", "");
 
     datosExcel.push(cabecera);
     datosExcel.push(subCabecera);
@@ -659,9 +694,12 @@ function exportarExcel() {
         }
 
         let correo = "";
-        est.incidentes.forEach(i => { if(i.correo_apoderado && !correo) correo = i.correo_apoderado; });
+        let telefono = ""; 
+        est.incidentes.forEach(i => { 
+            if(i.correo_apoderado && !correo) correo = i.correo_apoderado; 
+            if(i.telefono_apoderado && !telefono) telefono = i.telefono_apoderado;
+        });
 
-        // Creamos la fila del alumno
         let fila = [est.nombre, est.grado, est.seccion, est.estado];
         
         for (let i = 0; i < maxIncidentes; i++) {
@@ -674,18 +712,17 @@ function exportarExcel() {
             );
         }
         
-        fila.push(reporteFinal, correo);
+        fila.push(reporteFinal, correo, telefono);
         datosExcel.push(fila);
     });
 
     const worksheet = XLSX.utils.aoa_to_sheet(datosExcel);
     
-    // Ajustamos los anchos de las columnas dinámicamente
     let cols = [{ wch: 30 }, { wch: 10 }, { wch: 10 }, { wch: 20 }];
     for (let i = 0; i < maxIncidentes; i++) {
         cols.push({ wch: 12 }, { wch: 12 }, { wch: 15 }, { wch: 20 });
     }
-    cols.push({ wch: 25 }, { wch: 30 });
+    cols.push({ wch: 25 }, { wch: 30 }, { wch: 20 });
     worksheet['!cols'] = cols;
 
     const workbook = XLSX.utils.book_new();
