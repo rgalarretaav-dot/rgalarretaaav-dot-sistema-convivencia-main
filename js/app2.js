@@ -139,7 +139,7 @@ function cerrarModal() {
     document.getElementById('gradoEstudiante').value = '';
     document.getElementById('seccionEstudiante').value = '';
     document.getElementById('correoApoderado').value = '';
-    document.getElementById('telefonoApoderado').value = ''; // Limpiamos el teléfono
+    document.getElementById('telefonoApoderado').value = '';
     document.getElementById('numeroIncidente').value = '';
     document.getElementById('fechaIncidente').value = '';
     document.getElementById('personaReporta').value = '';
@@ -271,7 +271,6 @@ function enviarWhatsAppGratis(estudiante, telefono, tipo, fecha, descripcion, pe
         num = '51' + num;
     }
 
-    // DISEÑO BONITO DEL MENSAJE
     const mensaje = `━━━━━━━━━━━━━━━━━━━━\n` +
                     `📌 *REPORTE DE INCIDENTE*\n` +
                     `🏫 *I.E. N° 80829 "José Olaya"*\n` +
@@ -349,7 +348,10 @@ function dibujarTablaAgrupada(datos) {
 
     const userStr = localStorage.getItem('usuarioLogueado');
     const usuarioActual = JSON.parse(userStr);
-    const tienePermiso = usuarioActual.rol === 'Administrador' || usuarioActual.puede_borrar === true;
+    
+    // NUEVA LÓGICA DE PERMISOS
+    const puedeEditar = usuarioActual.rol === 'Administrador' || usuarioActual.puede_borrar === true || usuarioActual.puede_editar === true;
+    const puedeBorrar = usuarioActual.rol === 'Administrador' || usuarioActual.puede_borrar === true;
 
     tbody.innerHTML = "";
     Object.values(estudiantes).forEach(est => {
@@ -375,15 +377,17 @@ function dibujarTablaAgrupada(datos) {
                 <button onclick="verHistorial('${est.nombreReal}', '${est.grado}', '${est.seccion}')" style="background:#3b82f6; color:white; border:none; padding:6px 10px; border-radius:6px; cursor:pointer; font-weight:bold;" title="Ver Historial">👁️</button>
         `;
         
-        if (tienePermiso) {
+        // BOTONES SI TIENE PERMISO DE EDITAR (o borrar o admin)
+        if (puedeEditar) {
             if (est.estado === 'OBSERVADO') {
                 botones += `<button onclick="finalizarIncidentes('${est.nombreReal}', '${est.grado}', '${est.seccion}')" style="background:#22c55e; color:white; border:none; padding:6px 10px; border-radius:6px; cursor:pointer; font-weight:bold;" title="Dar por Finalizado">✅</button>`;
             }
+            botones += `<button onclick="abrirModalEditarAlumno('${est.nombreReal}', '${est.grado}', '${est.seccion}')" style="background:#f59e0b; color:white; border:none; padding:6px 10px; border-radius:6px; cursor:pointer; font-weight:bold;" title="Editar Alumno">✏️</button>`;
+        }
 
-            botones += `
-                <button onclick="abrirModalEditarAlumno('${est.nombreReal}', '${est.grado}', '${est.seccion}')" style="background:#f59e0b; color:white; border:none; padding:6px 10px; border-radius:6px; cursor:pointer; font-weight:bold;" title="Editar Alumno">✏️</button>
-                <button onclick="eliminarEstudiante('${est.nombreReal}', '${est.grado}', '${est.seccion}')" style="background:#ef4444; color:white; border:none; padding:6px 10px; border-radius:6px; cursor:pointer; font-weight:bold;" title="Eliminar Alumno">🗑️</button>
-            `;
+        // BOTÓN SI TIENE PERMISO DE BORRAR (o admin)
+        if (puedeBorrar) {
+            botones += `<button onclick="eliminarEstudiante('${est.nombreReal}', '${est.grado}', '${est.seccion}')" style="background:#ef4444; color:white; border:none; padding:6px 10px; border-radius:6px; cursor:pointer; font-weight:bold;" title="Eliminar Alumno">🗑️</button>`;
         }
         botones += `</div>`;
 
@@ -525,7 +529,7 @@ async function verHistorial(nombreEstudiante, gradoEstudiante, seccionEstudiante
 
     const userStr = localStorage.getItem('usuarioLogueado');
     const usuarioActual = JSON.parse(userStr);
-    let tienePermisoBorrar = usuarioActual.rol === 'Administrador';
+    let tienePermisoBorrar = usuarioActual.rol === 'Administrador' || usuarioActual.puede_borrar === true;
 
     if (!tienePermisoBorrar) {
         try {
@@ -581,34 +585,47 @@ function cerrarModalAdmin() { document.getElementById('modalAdmin').style.displa
 
 async function cargarUsuariosAdmin() {
     const tbody = document.getElementById('cuerpoAdmin');
-    tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; padding: 20px;">Cargando usuarios...</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding: 20px;">Cargando usuarios...</td></tr>`;
     try {
         const { data, error } = await supabaseClient.from('usuarios').select('*').order('nombre');
         if (error) throw error;
         tbody.innerHTML = "";
         data.forEach(user => {
             if (user.rol === 'Administrador') return; 
-            const estaActivo = user.puede_borrar ? 'checked' : '';
+            const activoEditar = user.puede_editar ? 'checked' : '';
+            const activoBorrar = user.puede_borrar ? 'checked' : '';
+            
             tbody.innerHTML += `
                 <tr style="border-bottom: 1px solid #e2e8f0;">
                     <td style="padding: 12px; font-weight: bold; color: #333;">${user.nombre}</td>
                     <td style="padding: 12px; color: #64748b;">${user.rol}</td>
                     <td style="padding: 12px; text-align: center;">
-                        <label class="switch"><input type="checkbox" ${estaActivo} onchange="cambiarPermiso(${user.id}, this.checked)"><span class="slider"></span></label>
+                        <label class="switch"><input type="checkbox" ${activoEditar} onchange="cambiarPermisoEditar(${user.id}, this.checked)"><span class="slider"></span></label>
+                    </td>
+                    <td style="padding: 12px; text-align: center;">
+                        <label class="switch"><input type="checkbox" ${activoBorrar} onchange="cambiarPermisoBorrar(${user.id}, this.checked)"><span class="slider"></span></label>
                     </td>
                     <td style="padding: 12px; text-align: center;">
                         <button onclick="eliminarUsuario(${user.id}, '${user.nombre}')" style="background:#ef4444; color:white; border:none; padding:6px 10px; border-radius:6px; cursor:pointer;">🗑️</button>
                     </td>
                 </tr>`;
         });
-    } catch (error) { tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color: red;">Error al cargar usuarios</td></tr>`; }
+    } catch (error) { tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color: red;">Error al cargar usuarios</td></tr>`; }
 }
 
-async function cambiarPermiso(idUsuario, permitirBorrar) {
+async function cambiarPermisoEditar(idUsuario, permitirEditar) {
+    try {
+        const { error } = await supabaseClient.from('usuarios').update({ puede_editar: permitirEditar }).eq('id', idUsuario);
+        if (error) throw error;
+        mostrarToast("✅ Permiso de edición actualizado");
+    } catch (error) { mostrarToast("❌ Error al actualizar permisos", "error"); }
+}
+
+async function cambiarPermisoBorrar(idUsuario, permitirBorrar) {
     try {
         const { error } = await supabaseClient.from('usuarios').update({ puede_borrar: permitirBorrar }).eq('id', idUsuario);
         if (error) throw error;
-        mostrarToast("✅ Permisos actualizados");
+        mostrarToast("✅ Permiso de borrado actualizado");
     } catch (error) { mostrarToast("❌ Error al actualizar permisos", "error"); }
 }
 
