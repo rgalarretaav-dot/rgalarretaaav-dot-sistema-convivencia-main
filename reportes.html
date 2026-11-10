@@ -55,7 +55,9 @@
                         <th>Acciones</th>
                     </tr>
                 </thead>
-                <tbody id="cuerpoTabla"></tbody>
+                <tbody id="cuerpoTabla">
+                    <!-- Aquí se cargan los datos -->
+                </tbody>
             </table>
         </div>
     </main>
@@ -110,7 +112,8 @@
             </div>
             <div class="modal-botones">
                 <button class="btn-cancelar" onclick="cerrarModal()">Cancelar</button>
-                <button class="btn-guardar" onclick="guardarIncidente()">Guardar Incidente</button>
+                <!-- AQUI ESTA LA CORRECCION PARA EVITAR DUPLICADOS -->
+                <button class="btn-guardar" id="btnGuardarIncidente" onclick="guardarIncidente(this)">Guardar Incidente</button>
             </div>
         </div>
     </div>
@@ -211,7 +214,7 @@
                         <tr style="background: #f8fafc; color: #1e3a8a; border-bottom: 2px solid #e2e8f0;">
                             <th style="padding: 12px; text-align: left;">Usuario</th>
                             <th style="padding: 12px; text-align: left;">Rol</th>
-                            <th style="padding: 12px; text-align: center;">¿Puede Editar?</th> <!-- NUEVA COLUMNA -->
+                            <th style="padding: 12px; text-align: center;">¿Puede Editar?</th>
                             <th style="padding: 12px; text-align: center;">¿Puede Borrar?</th>
                             <th style="padding: 12px; text-align: center;">Eliminar</th>
                         </tr>

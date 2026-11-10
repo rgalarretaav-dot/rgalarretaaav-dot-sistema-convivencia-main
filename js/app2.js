@@ -33,16 +33,23 @@ async function iniciarSesion() {
     const email = document.getElementById('email').value;
     const password = document.getElementById('password').value;
     if (!email || !password) return alert("Completa los campos");
-    const btn = document.querySelector('button');
+    
+    // Buscar el botón correctamente
+    const btn = document.querySelector('.login-container button');
     const textoOriginal = btn.innerText;
     btn.innerText = "Verificando..."; btn.disabled = true;
+
     try {
         const { data, error } = await supabaseClient.from('usuarios').select('*').eq('email', email).eq('password', password).single();
         if (error || !data) throw new Error("Correo o contraseña incorrectos");
+        
         localStorage.setItem('usuarioLogueado', JSON.stringify(data));
         iniciarAnimacionEpica(data.nombre);
+        
     } catch (error) {
-        alert("❌ " + error.message); btn.innerText = textoOriginal; btn.disabled = false;
+        alert("❌ " + error.message); 
+        btn.innerText = textoOriginal; 
+        btn.disabled = false;
     }
 }
 
@@ -51,22 +58,42 @@ function iniciarAnimacionEpica(nombre) {
     const matrixContainer = document.getElementById('matrix-rain');
     const hackerText = document.getElementById('hacker-text');
     const heroText = document.getElementById('epic-text');
-    if(overlay) overlay.classList.add('active');
+    
+    if(overlay) overlay.style.display = 'flex'; // Mostrar overlay
+    
     if (matrixContainer) {
         const caracteres = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$%&";
-        for (let i = 0; i < 60; i++) {
+        // Reducido a 30 caracteres para que no consuma tanta memoria
+        for (let i = 0; i < 30; i++) {
             const char = document.createElement('div');
             char.classList.add('matrix-char');
             char.innerText = caracteres[Math.floor(Math.random() * caracteres.length)];
             char.style.left = `${Math.random() * 100}vw`;
-            char.style.animationDuration = `${Math.random() * 1 + 0.5}s`;
-            char.style.animationDelay = `${Math.random() * 1.5}s`;
+            char.style.animationDuration = `${Math.random() * 0.8 + 0.5}s`;
+            char.style.animationDelay = `${Math.random() * 1}s`;
             matrixContainer.appendChild(char);
         }
     }
-    setTimeout(() => { if (hackerText) { hackerText.innerText = "¡IDENTIDAD VERIFICADA!"; hackerText.style.color = "#e23636"; hackerText.style.textShadow = "0 0 10px #e23636"; } }, 1200);
-    setTimeout(() => { if (hackerText) hackerText.style.display = 'none'; if (matrixContainer) matrixContainer.style.display = 'none'; if (heroText) { heroText.innerHTML = `¡ACCESO<br>CONCEDIDO,<br>${nombre.split(' ')[0]}!`; heroText.style.display = 'block'; } }, 2200);
-    setTimeout(() => { window.location.href = "reportes.html"; }, 3800);
+    
+    // Tiempos reducidos para que sea más rápido
+    setTimeout(() => { 
+        if (hackerText) { 
+            hackerText.innerText = "¡IDENTIDAD VERIFICADA!"; 
+            hackerText.style.color = "#e23636"; 
+            hackerText.style.textShadow = "0 0 10px #e23636"; 
+        } 
+    }, 800);
+    
+    setTimeout(() => { 
+        if (hackerText) hackerText.style.display = 'none'; 
+        if (matrixContainer) matrixContainer.style.display = 'none'; 
+        if (heroText) { 
+            heroText.innerHTML = `¡ACCESO<br>CONCEDIDO,<br>${nombre.split(' ')[0]}!`; 
+            heroText.style.display = 'block'; 
+        } 
+    }, 1500);
+    
+    setTimeout(() => { window.location.href = "reportes.html"; }, 2500); // 2.5 segundos en total
 }
 
 async function registrarUsuario() {
@@ -78,24 +105,37 @@ async function registrarUsuario() {
     const confirmPassword = document.getElementById('confirmPassword').value;
     if (!nombre || !email || !rol || !password || !confirmPassword) return alert("Completa los campos");
     if (password !== confirmPassword) return alert("❌ Las contraseñas no coinciden.");
-    const btn = document.querySelector('button');
+    
+    const btn = document.querySelector('.login-container button');
     const textoOriginal = btn.innerText;
     btn.innerText = "Registrando..."; btn.disabled = true;
+    
     try {
         const { error } = await supabaseClient.from('usuarios').insert([{ nombre, email, rol, password }]);
         if (error) throw error;
         iniciarAnimacionJarvis();
-    } catch (error) { alert("❌ Error: " + error.message); btn.innerText = textoOriginal; btn.disabled = false; }
+    } catch (error) { 
+        alert("❌ Error: " + error.message); 
+        btn.innerText = textoOriginal; 
+        btn.disabled = false; 
+    }
 }
 
 function iniciarAnimacionJarvis() {
     const overlay = document.getElementById('jarvis-loader');
     const text = document.getElementById('jarvis-text');
-    if(overlay) overlay.classList.add('active');
-    setTimeout(() => { if(text) text.innerText = "CREANDO PERFIL..."; }, 1000);
-    setTimeout(() => { if(text) text.innerText = "ENCRIPTANDO DATOS..."; }, 2000);
-    setTimeout(() => { if(text) { text.innerText = "¡REGISTRO EXITOSO!"; text.style.color = "#22c55e"; text.style.textShadow = "0 0 20px #22c55e"; } }, 3000);
-    setTimeout(() => { window.location.href = "index.html"; }, 4000);
+    if(overlay) overlay.style.display = 'flex';
+    
+    setTimeout(() => { if(text) text.innerText = "CREANDO PERFIL..."; }, 800);
+    setTimeout(() => { if(text) text.innerText = "ENCRIPTANDO DATOS..."; }, 1500);
+    setTimeout(() => { 
+        if(text) { 
+            text.innerText = "¡REGISTRO EXITOSO!"; 
+            text.style.color = "#22c55e"; 
+            text.style.textShadow = "0 0 20px #22c55e"; 
+        } 
+    }, 2200);
+    setTimeout(() => { window.location.href = "index.html"; }, 3000);
 }
 
 async function solicitarAdmin(event) {
@@ -203,7 +243,14 @@ function resolverConfirmacion(decision) {
     }
 }
 
-async function guardarIncidente() {
+// ⚠️ IMPORTANTE: Ahora recibe "boton" para bloquearlo y evitar duplicados
+async function guardarIncidente(boton) {
+    // 1. Bloquear botón para evitar doble clic
+    if (boton) {
+        boton.disabled = true;
+        boton.innerText = "Guardando...";
+    }
+
     const estudiante = document.getElementById('nombreEstudiante').value;
     const grado = document.getElementById('gradoEstudiante').value;
     const seccion = document.getElementById('seccionEstudiante').value;
@@ -216,7 +263,9 @@ async function guardarIncidente() {
     const descripcion = document.getElementById('descripcionIncidente').value;
     
     if (!estudiante || !grado || !seccion || !correoApoderado || !numero || !fecha || !persona || !descripcion) {
-        return mostrarToast("Completa todos los campos", "error");
+        mostrarToast("Completa todos los campos", "error");
+        if (boton) { boton.disabled = false; boton.innerText = "Guardar Incidente"; }
+        return;
     }
 
     let estadoInicial = (tipo === 'GRAVE' || tipo === 'MUY GRAVE') ? 'OBSERVADO' : 'FINALIZADO';
@@ -242,6 +291,7 @@ async function guardarIncidente() {
                 mostrarToast("🚫 Correo no enviado (Falta perdonada).", "error");
             }
             cargarTablaIncidentes(); 
+            if (boton) { boton.disabled = false; boton.innerText = "Guardar Incidente"; }
             return; 
         }
 
@@ -249,6 +299,12 @@ async function guardarIncidente() {
         cargarTablaIncidentes(); 
     } catch (error) {
         mostrarToast("❌ Error: " + error.message, "error");
+    } finally {
+        // 2. Desbloquear botón pase lo que pase
+        if (boton) { 
+            boton.disabled = false; 
+            boton.innerText = "Guardar Incidente"; 
+        }
     }
 }
 
@@ -263,7 +319,6 @@ function enviarCorreoNotificacion(estudiante, correo, tipo, fecha, descripcion, 
               function(error) { mostrarToast("❌ Error al enviar el correo", "error"); });
 }
 
-// --- FUNCIÓN: ENVIAR WHATSAPP GRATIS (CON DISEÑO) ---
 function enviarWhatsAppGratis(estudiante, telefono, tipo, fecha, descripcion, persona) {
     let num = telefono.replace(/\D/g, '');
     
@@ -295,7 +350,8 @@ async function cargarTablaIncidentes() {
     const tbody = document.getElementById('cuerpoTabla');
     if (!tbody) return; 
     try {
-        const { data, error } = await supabaseClient.from('incidentes').select('*').order('id', { ascending: false });
+        // Se agrega un .limit(2000) para evitar colapsar el navegador si hay miles de datos
+        const { data, error } = await supabaseClient.from('incidentes').select('*').order('id', { ascending: false }).limit(2000);
         if (error) throw error;
         listaIncidentesGlobal = data; 
         dibujarTablaAgrupada(data);
@@ -304,6 +360,7 @@ async function cargarTablaIncidentes() {
     }
 }
 
+// ⚠️ FUNCIÓN OPTIMIZADA: Ya no congela la página
 function dibujarTablaAgrupada(datos) {
     const tbody = document.getElementById('cuerpoTabla');
     let totalLeves = 0, totalGraves = 0, totalMuyGraves = 0;
@@ -349,11 +406,12 @@ function dibujarTablaAgrupada(datos) {
     const userStr = localStorage.getItem('usuarioLogueado');
     const usuarioActual = JSON.parse(userStr);
     
-    // NUEVA LÓGICA DE PERMISOS
     const puedeEditar = usuarioActual.rol === 'Administrador' || usuarioActual.puede_borrar === true || usuarioActual.puede_editar === true;
     const puedeBorrar = usuarioActual.rol === 'Administrador' || usuarioActual.puede_borrar === true;
 
-    tbody.innerHTML = "";
+    // 🔥 AQUÍ ESTÁ LA MAGIA: En lugar de "tbody.innerHTML +=" en cada vuelta, creamos el HTML en memoria
+    let filasHTML = "";
+
     Object.values(estudiantes).forEach(est => {
         let colorFondo = "", colorBorde = "", textoEstado = "";
         
@@ -377,7 +435,6 @@ function dibujarTablaAgrupada(datos) {
                 <button onclick="verHistorial('${est.nombreReal}', '${est.grado}', '${est.seccion}')" style="background:#3b82f6; color:white; border:none; padding:6px 10px; border-radius:6px; cursor:pointer; font-weight:bold;" title="Ver Historial">👁️</button>
         `;
         
-        // BOTONES SI TIENE PERMISO DE EDITAR (o borrar o admin)
         if (puedeEditar) {
             if (est.estado === 'OBSERVADO') {
                 botones += `<button onclick="finalizarIncidentes('${est.nombreReal}', '${est.grado}', '${est.seccion}')" style="background:#22c55e; color:white; border:none; padding:6px 10px; border-radius:6px; cursor:pointer; font-weight:bold;" title="Dar por Finalizado">✅</button>`;
@@ -385,13 +442,13 @@ function dibujarTablaAgrupada(datos) {
             botones += `<button onclick="abrirModalEditarAlumno('${est.nombreReal}', '${est.grado}', '${est.seccion}')" style="background:#f59e0b; color:white; border:none; padding:6px 10px; border-radius:6px; cursor:pointer; font-weight:bold;" title="Editar Alumno">✏️</button>`;
         }
 
-        // BOTÓN SI TIENE PERMISO DE BORRAR (o admin)
         if (puedeBorrar) {
             botones += `<button onclick="eliminarEstudiante('${est.nombreReal}', '${est.grado}', '${est.seccion}')" style="background:#ef4444; color:white; border:none; padding:6px 10px; border-radius:6px; cursor:pointer; font-weight:bold;" title="Eliminar Alumno">🗑️</button>`;
         }
         botones += `</div>`;
 
-        tbody.innerHTML += `
+        // Concatenamos a la variable en lugar del DOM
+        filasHTML += `
             <tr style="border-left: 6px solid ${colorBorde}; background: ${colorFondo};">
                 <td style="font-weight:bold; font-size:1rem;">${est.nombreReal}</td>
                 <td style="font-weight:bold; color: #64748b;">${est.grado}</td>
@@ -402,6 +459,9 @@ function dibujarTablaAgrupada(datos) {
                 <td>${botones}</td>
             </tr>`;
     });
+
+    // 🔥 Imprimimos todo de golpe (Súper rápido)
+    tbody.innerHTML = filasHTML;
 
     document.getElementById('stat-total').innerText = datos.length; 
     document.getElementById('stat-verde').innerText = totalLeves;
@@ -419,7 +479,6 @@ function filtrarTabla() {
     dibujarTablaAgrupada(filtrados);
 }
 
-// --- FUNCIÓN PARA FINALIZAR INCIDENTES ---
 async function finalizarIncidentes(nombre, grado, seccion) {
     if (!confirm(`⚠️ ¿Estás seguro de dar por FINALIZADOS todos los incidentes de "${nombre}"?`)) return;
 
@@ -518,7 +577,7 @@ async function eliminarEstudiante(nombre, grado, seccion) {
 }
 
 // ==========================================
-// HISTORIAL
+// HISTORIAL (Optimizado)
 // ==========================================
 async function verHistorial(nombreEstudiante, gradoEstudiante, seccionEstudiante) {
     const modal = document.getElementById('modalHistorial');
@@ -538,17 +597,17 @@ async function verHistorial(nombreEstudiante, gradoEstudiante, seccionEstudiante
         } catch (error) { console.error(error); }
     }
 
-    tbody.innerHTML = "";
     const incidentesAlumno = listaIncidentesGlobal.filter(rep => rep.estudiante.trim() === nombreEstudiante && (rep.grado || '-') === gradoEstudiante && (rep.seccion || '-') === seccionEstudiante);
     incidentesAlumno.sort((a, b) => a.id - b.id);
 
+    // 🔥 Optimizado
+    let filasHTML = "";
     incidentesAlumno.forEach(rep => {
         let colorFalta = rep.tipo_falta === 'LEVE' ? '#22c55e' : (rep.tipo_falta === 'GRAVE' ? '#f59e0b' : '#ef4444');
-        
         let textEstado = rep.estado === 'OBSERVADO' ? '⏳ OBSERVADO' : '✅ FINALIZADO';
         let bgEstado = rep.estado === 'OBSERVADO' ? '#f59e0b' : '#22c55e';
         
-        tbody.innerHTML += `
+        filasHTML += `
             <tr style="border-bottom: 1px solid #e2e8f0;">
                 <td style="padding: 12px; font-weight:bold;">${rep.numero_incidente}</td>
                 <td style="padding: 12px;"><span style="background:${colorFalta}20; color:${colorFalta}; padding:4px 8px; border-radius:4px; font-weight:bold; font-size:0.8rem;">${rep.tipo_falta}</span></td>
@@ -561,6 +620,8 @@ async function verHistorial(nombreEstudiante, gradoEstudiante, seccionEstudiante
                 </td>
             </tr>`;
     });
+    
+    tbody.innerHTML = filasHTML;
     modal.style.display = 'flex';
 }
 
@@ -578,7 +639,7 @@ async function eliminarIncidente(id) {
 }
 
 // ==========================================
-// ADMINISTRACIÓN DE USUARIOS
+// ADMINISTRACIÓN DE USUARIOS (Optimizado)
 // ==========================================
 function abrirModalAdmin() { document.getElementById('modalAdmin').style.display = 'flex'; cargarUsuariosAdmin(); }
 function cerrarModalAdmin() { document.getElementById('modalAdmin').style.display = 'none'; }
@@ -589,13 +650,15 @@ async function cargarUsuariosAdmin() {
     try {
         const { data, error } = await supabaseClient.from('usuarios').select('*').order('nombre');
         if (error) throw error;
-        tbody.innerHTML = "";
+        
+        // 🔥 Optimizado
+        let filasHTML = "";
         data.forEach(user => {
             if (user.rol === 'Administrador') return; 
             const activoEditar = user.puede_editar ? 'checked' : '';
             const activoBorrar = user.puede_borrar ? 'checked' : '';
             
-            tbody.innerHTML += `
+            filasHTML += `
                 <tr style="border-bottom: 1px solid #e2e8f0;">
                     <td style="padding: 12px; font-weight: bold; color: #333;">${user.nombre}</td>
                     <td style="padding: 12px; color: #64748b;">${user.rol}</td>
@@ -610,6 +673,8 @@ async function cargarUsuariosAdmin() {
                     </td>
                 </tr>`;
         });
+        
+        tbody.innerHTML = filasHTML;
     } catch (error) { tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color: red;">Error al cargar usuarios</td></tr>`; }
 }
 
