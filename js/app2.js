@@ -413,7 +413,6 @@ function dibujarTablaAgrupada(datos) {
     const esAdmin = usuarioActual.rol === 'Administrador';
     const puedeEditar = esAdmin || usuarioActual.puede_editar === true;
     const puedeBorrar = esAdmin || usuarioActual.puede_borrar === true;
-    // NUEVO: Permiso para Habilitar (Admin o quien tenga el permiso)
     const puedeHabilitar = esAdmin || usuarioActual.puede_habilitar === true;
 
     let filasHTML = "";
@@ -589,14 +588,14 @@ async function eliminarEstudiante(nombre, grado, seccion) {
 }
 
 // ==========================================
-// HISTORIAL
+// HISTORIAL (CORREGIDO - SIN COLUMNA FINALIZADO)
 // ==========================================
 async function verHistorial(nombreEstudiante, gradoEstudiante, seccionEstudiante) {
     const modal = document.getElementById('modalHistorial');
     const tbody = document.getElementById('cuerpoHistorial');
     const titulo = document.getElementById('tituloHistorial');
     titulo.innerText = `📋 Historial de: ${nombreEstudiante} (${gradoEstudiante} - ${seccionEstudiante})`;
-    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding: 20px;">Verificando permisos...</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding: 20px;">Verificando permisos...</td></tr>`;
 
     const userStr = localStorage.getItem('usuarioLogueado');
     const usuarioActual = JSON.parse(userStr);
@@ -615,9 +614,8 @@ async function verHistorial(nombreEstudiante, gradoEstudiante, seccionEstudiante
     let filasHTML = "";
     incidentesAlumno.forEach(rep => {
         let colorFalta = rep.tipo_falta === 'LEVE' ? '#22c55e' : (rep.tipo_falta === 'GRAVE' ? '#f59e0b' : '#ef4444');
-        let textEstado = rep.estado === 'OBSERVADO' ? '⏳ OBSERVADO' : '✅ FINALIZADO';
-        let bgEstado = rep.estado === 'OBSERVADO' ? '#f59e0b' : '#22c55e';
         
+        // Se eliminaron las columnas de estado para que no choquen con el botón
         filasHTML += `
             <tr style="border-bottom: 1px solid #e2e8f0;">
                 <td style="padding: 12px; font-weight:bold;">${rep.numero_incidente}</td>
@@ -625,7 +623,6 @@ async function verHistorial(nombreEstudiante, gradoEstudiante, seccionEstudiante
                 <td style="padding: 12px;">${formatearFecha(rep.fecha)}</td>
                 <td style="padding: 12px;">${rep.persona_reporta}</td>
                 <td style="padding: 12px; font-size:0.85rem; color:#64748b;">${rep.descripcion}</td>
-                <td style="padding: 12px;"><span style="background:${bgEstado}; color:white; padding:4px 8px; border-radius:4px; font-weight:bold; font-size:0.8rem;">${textEstado}</span></td>
                 <td style="padding: 12px; text-align:center;">
                     ${tienePermisoBorrar ? `<button onclick="eliminarIncidente(${rep.id})" style="background:#ef4444; color:white; border:none; padding:8px 10px; border-radius:6px; cursor:pointer;" title="Eliminar este incidente">🗑️</button>` : `<span style="color:#cbd5e1; font-size: 0.8rem;">Sin permiso</span>`}
                 </td>
@@ -667,7 +664,7 @@ async function cargarUsuariosAdmin() {
             if (user.rol === 'Administrador') return; 
             const activoEditar = user.puede_editar ? 'checked' : '';
             const activoBorrar = user.puede_borrar ? 'checked' : '';
-            const activoHabilitar = user.puede_habilitar ? 'checked' : ''; // NUEVO
+            const activoHabilitar = user.puede_habilitar ? 'checked' : '';
             
             filasHTML += `
                 <tr style="border-bottom: 1px solid #e2e8f0;">
@@ -708,7 +705,6 @@ async function cambiarPermisoBorrar(idUsuario, permitirBorrar) {
     } catch (error) { mostrarToast("❌ Error al actualizar permisos", "error"); }
 }
 
-// NUEVO: Función para cambiar el permiso de habilitación
 async function cambiarPermisoHabilitar(idUsuario, permitirHabilitar) {
     try {
         const { error } = await supabaseClient.from('usuarios').update({ puede_habilitar: permitirHabilitar }).eq('id', idUsuario);
@@ -1064,7 +1060,7 @@ async function eliminarEvidencia(id) {
 }
 
 // ============================================================
-// INYECCIÓN DINÁMICA DE MODALES (Actualiza el panel de Admin)
+// INYECCIÓN DINÁMICA DE MODALES
 // ============================================================
 function inyectarModalesSiNoExisten() {
     // 1. Inyectar modal de subir evidencias
