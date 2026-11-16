@@ -442,33 +442,24 @@ function dibujarTablaAgrupada(datos) {
 
         let botones = `<div style="display: flex; gap: 4px; justify-content: center; flex-wrap: wrap;">`;
         
-        // Ver historial (siempre)
         botones += `<button onclick="verHistorial('${est.nombreReal}', '${est.grado}', '${est.seccion}')" style="background:#3b82f6; color:white; border:none; padding:6px 9px; border-radius:6px; cursor:pointer; font-weight:bold;" title="Ver Historial">👁️</button>`;
-        
-        // Subir evidencia (siempre)
         botones += `<button onclick="abrirModalEvidencia('${est.nombreReal}', '${est.grado}', '${est.seccion}')" style="background:#8b5cf6; color:white; border:none; padding:6px 9px; border-radius:6px; cursor:pointer; font-weight:bold;" title="Subir Evidencia">📎</button>`;
-        
-        // Ver evidencias (siempre)
         botones += `<button onclick="verEvidencias('${est.nombreReal}', '${est.grado}', '${est.seccion}')" style="background:#0ea5e9; color:white; border:none; padding:6px 9px; border-radius:6px; cursor:pointer; font-weight:bold;" title="Ver Evidencias">📂</button>`;
         
-        // Habilitar finalización (Usa la nueva variable puedeHabilitar)
         if (puedeHabilitar && estadoCaso === 'pendiente_habilitacion') {
             botones += `<button onclick="habilitarFinalizacion('${est.nombreReal}', '${est.grado}', '${est.seccion}')" style="background:#10b981; color:white; border:none; padding:6px 9px; border-radius:6px; cursor:pointer; font-weight:bold;" title="Habilitar Finalización">🔓</button>`;
         }
         
-        // Check para finalizar (si está habilitado y no finalizado)
         if (estadoCaso === 'habilitado') {
             botones += `<label style="display:inline-flex; align-items:center; gap:4px; background:#dcfce7; padding:6px 8px; border-radius:6px; font-weight:bold; color:#166534; cursor:pointer; font-size:0.8rem;" title="Marcar como Finalizado">
                 <input type="checkbox" onchange="finalizarCaso('${est.nombreReal}', '${est.grado}', '${est.seccion}', this)"> OK
             </label>`;
         }
         
-        // Editar (con permiso)
         if (puedeEditar) {
             botones += `<button onclick="abrirModalEditarAlumno('${est.nombreReal}', '${est.grado}', '${est.seccion}')" style="background:#f59e0b; color:white; border:none; padding:6px 9px; border-radius:6px; cursor:pointer; font-weight:bold;" title="Editar Alumno">✏️</button>`;
         }
         
-        // Eliminar (con permiso)
         if (puedeBorrar) {
             botones += `<button onclick="eliminarEstudiante('${est.nombreReal}', '${est.grado}', '${est.seccion}')" style="background:#ef4444; color:white; border:none; padding:6px 9px; border-radius:6px; cursor:pointer; font-weight:bold;" title="Eliminar Alumno">🗑️</button>`;
         }
@@ -901,18 +892,34 @@ async function finalizarCaso(nombre, grado, seccion, checkbox) {
 }
 
 // ============================================================
-// EVIDENCIAS (SUBIR / VER / ELIMINAR) - ACTUALIZADO CON OBSERVACIÓN
+// EVIDENCIAS (SUBIR / VER / ELIMINAR)
 // ============================================================
 function abrirModalEvidencia(nombre, grado, seccion) {
     _contextoEvidencia = { nombre, grado, seccion };
-    document.getElementById('evidenciaContexto').textContent = `Estudiante: ${nombre} — ${grado} "${seccion}"`;
-    document.getElementById('inputEvidencias').value = '';
-    document.getElementById('observacionEvidencia').value = ''; // Limpiar observación
-    document.getElementById('modalSubirEvidencia').style.display = 'flex';
+    
+    // Forzamos a que si el modal existe pero no tiene el textarea, lo recreamos
+    const modalViejo = document.getElementById('modalSubirEvidencia');
+    if (!modalViejo || !document.getElementById('observacionEvidencia')) {
+        if(modalViejo) modalViejo.remove();
+        inyectarModalesSiNoExisten();
+    }
+    
+    const contexto = document.getElementById('evidenciaContexto');
+    if (contexto) contexto.textContent = `Estudiante: ${nombre} — ${grado} "${seccion}"`;
+    
+    const input = document.getElementById('inputEvidencias');
+    if (input) input.value = '';
+    
+    const obs = document.getElementById('observacionEvidencia');
+    if (obs) obs.value = '';
+    
+    const modal = document.getElementById('modalSubirEvidencia');
+    if (modal) modal.style.display = 'flex';
 }
 
 function cerrarModalEvidencia() {
-    document.getElementById('modalSubirEvidencia').style.display = 'none';
+    const modal = document.getElementById('modalSubirEvidencia');
+    if (modal) modal.style.display = 'none';
     _contextoEvidencia = null;
 }
 
@@ -929,7 +936,9 @@ async function subirEvidencias() {
     btn.textContent = 'Subiendo...';
 
     const { nombre, grado, seccion } = _contextoEvidencia;
-    const observacion = document.getElementById('observacionEvidencia').value; // Capturar observación
+    const obsInput = document.getElementById('observacionEvidencia');
+    const observacion = obsInput ? obsInput.value : '';
+    
     const gradoDB = (!grado || grado === '-') ? null : grado;
     const seccionDB = (!seccion || seccion === '-') ? null : seccion;
     const userStr = localStorage.getItem('usuarioLogueado');
@@ -969,7 +978,7 @@ async function subirEvidencias() {
             mime_type: file.type || 'application/octet-stream',
             tamano: file.size,
             subido_por: usuarioActual.nombre,
-            observacion: observacion || null // GUARDAR OBSERVACIÓN
+            observacion: observacion || null
         });
 
         if (dbErr) {
@@ -993,10 +1002,18 @@ async function verEvidencias(nombre, grado, seccion) {
     const gradoDB = (!grado || grado === '-') ? null : grado;
     const seccionDB = (!seccion || seccion === '-') ? null : seccion;
 
-    document.getElementById('verEvidenciasContexto').textContent = `Estudiante: ${nombre} — ${grado} "${seccion}"`;
+    if (!document.getElementById('modalVerEvidencias')) {
+        inyectarModalesSiNoExisten();
+    }
+
+    const context = document.getElementById('verEvidenciasContexto');
+    if (context) context.textContent = `Estudiante: ${nombre} — ${grado} "${seccion}"`;
+    
     const cont = document.getElementById('listaEvidencias');
-    cont.innerHTML = '<p style="padding:20px; text-align:center; color:#94a3b8;">Cargando...</p>';
-    document.getElementById('modalVerEvidencias').style.display = 'flex';
+    if (cont) cont.innerHTML = '<p style="padding:20px; text-align:center; color:#94a3b8;">Cargando...</p>';
+    
+    const modal = document.getElementById('modalVerEvidencias');
+    if (modal) modal.style.display = 'flex';
 
     const userStr = localStorage.getItem('usuarioLogueado');
     const usuarioActual = JSON.parse(userStr);
@@ -1014,34 +1031,37 @@ async function verEvidencias(nombre, grado, seccion) {
         if (error) throw error;
 
         if (!data || data.length === 0) {
-            cont.innerHTML = '<p style="padding:20px; text-align:center; color:#94a3b8;">No hay evidencias subidas aún.</p>';
+            if (cont) cont.innerHTML = '<p style="padding:20px; text-align:center; color:#94a3b8;">No hay evidencias subidas aún.</p>';
             return;
         }
 
-        cont.innerHTML = data.map(e => {
-            const fecha = new Date(e.created_at).toLocaleString('es-PE');
-            const peso = (e.tamano / 1024).toFixed(1) + ' KB';
-            return `
-                <div style="display:flex; justify-content:space-between; align-items:center; padding:12px; border-bottom:1px solid #e2e8f0; gap:10px;">
-                    <div style="flex:1; min-width:0;">
-                        <a href="${e.archivo_url}" target="_blank" rel="noopener" style="color:#3b82f6; font-weight:600; text-decoration:none; word-break:break-all;">📄 ${e.archivo_nombre}</a>
-                        <div style="font-size:0.75rem; color:#64748b; margin-top:4px;">${fecha} · ${peso} · ${e.subido_por || 'N/A'}</div>
-                        ${e.observacion ? `<div style="font-size:0.85rem; color:#334155; font-style:italic; margin-top:6px; padding:6px; background:#f1f5f9; border-radius:4px;">📝 <b>Obs:</b> ${e.observacion}</div>` : ''}
+        if (cont) {
+            cont.innerHTML = data.map(e => {
+                const fecha = new Date(e.created_at).toLocaleString('es-PE');
+                const peso = (e.tamano / 1024).toFixed(1) + ' KB';
+                return `
+                    <div style="display:flex; justify-content:space-between; align-items:center; padding:12px; border-bottom:1px solid #e2e8f0; gap:10px;">
+                        <div style="flex:1; min-width:0;">
+                            <a href="${e.archivo_url}" target="_blank" rel="noopener" style="color:#3b82f6; font-weight:600; text-decoration:none; word-break:break-all;">📄 ${e.archivo_nombre}</a>
+                            <div style="font-size:0.75rem; color:#64748b; margin-top:4px;">${fecha} · ${peso} · ${e.subido_por || 'N/A'}</div>
+                            ${e.observacion ? `<div style="font-size:0.85rem; color:#334155; font-style:italic; margin-top:6px; padding:6px; background:#f1f5f9; border-radius:4px;">📝 <b>Obs:</b> ${e.observacion}</div>` : ''}
+                        </div>
+                        <div style="display:flex; gap:6px;">
+                            <a href="${e.archivo_url}" target="_blank" rel="noopener" style="background:#3b82f6; color:white; padding:6px 10px; border-radius:6px; text-decoration:none; font-size:0.85rem; font-weight:600;">Ver</a>
+                            ${esAdmin ? `<button onclick="eliminarEvidencia(${e.id})" style="background:#ef4444; color:white; border:none; padding:6px 10px; border-radius:6px; cursor:pointer; font-weight:600;">🗑️</button>` : ''}
+                        </div>
                     </div>
-                    <div style="display:flex; gap:6px;">
-                        <a href="${e.archivo_url}" target="_blank" rel="noopener" style="background:#3b82f6; color:white; padding:6px 10px; border-radius:6px; text-decoration:none; font-size:0.85rem; font-weight:600;">Ver</a>
-                        ${esAdmin ? `<button onclick="eliminarEvidencia(${e.id})" style="background:#ef4444; color:white; border:none; padding:6px 10px; border-radius:6px; cursor:pointer; font-weight:600;">🗑️</button>` : ''}
-                    </div>
-                </div>
-            `;
-        }).join('');
+                `;
+            }).join('');
+        }
     } catch (error) {
-        cont.innerHTML = `<p style="padding:20px; color:#ef4444;">Error: ${error.message}</p>`;
+        if (cont) cont.innerHTML = `<p style="padding:20px; color:#ef4444;">Error: ${error.message}</p>`;
     }
 }
 
 function cerrarModalVerEvidencias() {
-    document.getElementById('modalVerEvidencias').style.display = 'none';
+    const modal = document.getElementById('modalVerEvidencias');
+    if (modal) modal.style.display = 'none';
 }
 
 async function eliminarEvidencia(id) {
@@ -1056,17 +1076,16 @@ async function eliminarEvidencia(id) {
         const { error } = await supabaseClient.from('evidencias').delete().eq('id', id);
         if (error) throw error;
         mostrarToast('🗑️ Evidencia eliminada');
-        document.getElementById('modalVerEvidencias').style.display = 'none';
+        cerrarModalVerEvidencias();
     } catch (error) {
         mostrarToast('❌ Error: ' + error.message, 'error');
     }
 }
 
 // ============================================================
-// INYECCIÓN DINÁMICA DE MODALES (ACTUALIZADO CON OBSERVACIÓN)
+// INYECCIÓN DINÁMICA DE MODALES (ACTUALIZADO)
 // ============================================================
 function inyectarModalesSiNoExisten() {
-    // 1. Inyectar modal de subir evidencias (Agregado textarea de observación)
     if (!document.getElementById('modalSubirEvidencia')) {
         const modalSubir = document.createElement('div');
         modalSubir.innerHTML = `
@@ -1093,7 +1112,6 @@ function inyectarModalesSiNoExisten() {
         document.body.appendChild(modalSubir.firstElementChild);
     }
 
-    // 2. Inyectar modal de ver evidencias
     if (!document.getElementById('modalVerEvidencias')) {
         const modalVer = document.createElement('div');
         modalVer.innerHTML = `
@@ -1111,7 +1129,6 @@ function inyectarModalesSiNoExisten() {
         document.body.appendChild(modalVer.firstElementChild);
     }
 
-    // 3. Actualizar el modal de Admin
     const modalAdmin = document.getElementById('modalAdmin');
     if (modalAdmin) {
         modalAdmin.innerHTML = `
@@ -1141,7 +1158,6 @@ function inyectarModalesSiNoExisten() {
     }
 }
 
-// Auto-inyectar cuando el DOM esté listo
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', inyectarModalesSiNoExisten);
 } else {
