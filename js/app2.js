@@ -588,7 +588,7 @@ async function eliminarEstudiante(nombre, grado, seccion) {
 }
 
 // ==========================================
-// HISTORIAL (CORREGIDO - SIN COLUMNA FINALIZADO)
+// HISTORIAL
 // ==========================================
 async function verHistorial(nombreEstudiante, gradoEstudiante, seccionEstudiante) {
     const modal = document.getElementById('modalHistorial');
@@ -615,7 +615,6 @@ async function verHistorial(nombreEstudiante, gradoEstudiante, seccionEstudiante
     incidentesAlumno.forEach(rep => {
         let colorFalta = rep.tipo_falta === 'LEVE' ? '#22c55e' : (rep.tipo_falta === 'GRAVE' ? '#f59e0b' : '#ef4444');
         
-        // Se eliminaron las columnas de estado para que no choquen con el botón
         filasHTML += `
             <tr style="border-bottom: 1px solid #e2e8f0;">
                 <td style="padding: 12px; font-weight:bold;">${rep.numero_incidente}</td>
@@ -902,12 +901,13 @@ async function finalizarCaso(nombre, grado, seccion, checkbox) {
 }
 
 // ============================================================
-// EVIDENCIAS (SUBIR / VER / ELIMINAR)
+// EVIDENCIAS (SUBIR / VER / ELIMINAR) - ACTUALIZADO CON OBSERVACIÓN
 // ============================================================
 function abrirModalEvidencia(nombre, grado, seccion) {
     _contextoEvidencia = { nombre, grado, seccion };
     document.getElementById('evidenciaContexto').textContent = `Estudiante: ${nombre} — ${grado} "${seccion}"`;
     document.getElementById('inputEvidencias').value = '';
+    document.getElementById('observacionEvidencia').value = ''; // Limpiar observación
     document.getElementById('modalSubirEvidencia').style.display = 'flex';
 }
 
@@ -929,6 +929,7 @@ async function subirEvidencias() {
     btn.textContent = 'Subiendo...';
 
     const { nombre, grado, seccion } = _contextoEvidencia;
+    const observacion = document.getElementById('observacionEvidencia').value; // Capturar observación
     const gradoDB = (!grado || grado === '-') ? null : grado;
     const seccionDB = (!seccion || seccion === '-') ? null : seccion;
     const userStr = localStorage.getItem('usuarioLogueado');
@@ -967,7 +968,8 @@ async function subirEvidencias() {
             archivo_url: urlData.publicUrl,
             mime_type: file.type || 'application/octet-stream',
             tamano: file.size,
-            subido_por: usuarioActual.nombre
+            subido_por: usuarioActual.nombre,
+            observacion: observacion || null // GUARDAR OBSERVACIÓN
         });
 
         if (dbErr) {
@@ -1024,6 +1026,7 @@ async function verEvidencias(nombre, grado, seccion) {
                     <div style="flex:1; min-width:0;">
                         <a href="${e.archivo_url}" target="_blank" rel="noopener" style="color:#3b82f6; font-weight:600; text-decoration:none; word-break:break-all;">📄 ${e.archivo_nombre}</a>
                         <div style="font-size:0.75rem; color:#64748b; margin-top:4px;">${fecha} · ${peso} · ${e.subido_por || 'N/A'}</div>
+                        ${e.observacion ? `<div style="font-size:0.85rem; color:#334155; font-style:italic; margin-top:6px; padding:6px; background:#f1f5f9; border-radius:4px;">📝 <b>Obs:</b> ${e.observacion}</div>` : ''}
                     </div>
                     <div style="display:flex; gap:6px;">
                         <a href="${e.archivo_url}" target="_blank" rel="noopener" style="background:#3b82f6; color:white; padding:6px 10px; border-radius:6px; text-decoration:none; font-size:0.85rem; font-weight:600;">Ver</a>
@@ -1060,10 +1063,10 @@ async function eliminarEvidencia(id) {
 }
 
 // ============================================================
-// INYECCIÓN DINÁMICA DE MODALES
+// INYECCIÓN DINÁMICA DE MODALES (ACTUALIZADO CON OBSERVACIÓN)
 // ============================================================
 function inyectarModalesSiNoExisten() {
-    // 1. Inyectar modal de subir evidencias
+    // 1. Inyectar modal de subir evidencias (Agregado textarea de observación)
     if (!document.getElementById('modalSubirEvidencia')) {
         const modalSubir = document.createElement('div');
         modalSubir.innerHTML = `
@@ -1072,13 +1075,17 @@ function inyectarModalesSiNoExisten() {
                     <h2>📎 Subir Evidencias</h2>
                     <p id="evidenciaContexto" style="color:#475569; margin-bottom:15px; font-size:0.9rem;"></p>
                     <div class="form-group">
-                        <label>Archivos (fotos, PDF, Word, Excel, TXT):</label>
+                        <label>Selecciona archivos (fotos, PDF, Word, Excel, etc.):</label>
                         <input type="file" id="inputEvidencias" multiple accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt">
                         <small style="color:#64748b; display:block; margin-top:8px;">Máx. 10 MB por archivo.</small>
                     </div>
+                    <div class="form-group" style="margin-top: 15px;">
+                        <label>Observación (Opcional):</label>
+                        <textarea id="observacionEvidencia" rows="3" placeholder="Escribe un comentario o detalle sobre esta evidencia..."></textarea>
+                    </div>
                     <div class="modal-botones">
                         <button class="btn-cancelar" onclick="cerrarModalEvidencia()">Cancelar</button>
-                        <button class="btn-guardar" id="btnSubirEvidencias" style="background:#8b5cf6;" onclick="subirEvidencias()">Subir</button>
+                        <button class="btn-guardar" id="btnSubirEvidencias" style="background:#8b5cf6;" onclick="subirEvidencias()">Subir Archivos</button>
                     </div>
                 </div>
             </div>
@@ -1104,7 +1111,7 @@ function inyectarModalesSiNoExisten() {
         document.body.appendChild(modalVer.firstElementChild);
     }
 
-    // 3. Actualizar el modal de Admin (Agregar la columna Habilitar)
+    // 3. Actualizar el modal de Admin
     const modalAdmin = document.getElementById('modalAdmin');
     if (modalAdmin) {
         modalAdmin.innerHTML = `
