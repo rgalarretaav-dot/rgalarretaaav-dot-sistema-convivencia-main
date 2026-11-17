@@ -219,20 +219,20 @@
         </div>
     </div>
 
-    <!-- ========================================================= -->
-    <!-- NUEVO MODAL: SUBIR EVIDENCIAS                              -->
-    <!-- ========================================================= -->
+    <!-- MODAL: SUBIR EVIDENCIAS -->
     <div class="modal-overlay" id="modalSubirEvidencia">
         <div class="modal-content">
             <h2>📎 Subir Evidencias</h2>
             <p id="evidenciaContexto" style="color:#475569; margin-bottom:15px; font-size:0.9rem;"></p>
             <div class="form-group">
                 <label>Selecciona archivos (fotos, PDF, Word, Excel, etc.):</label>
-                <input type="file" id="inputEvidencias" multiple
-                       accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt">
+                <input type="file" id="inputEvidencias" multiple accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt">
                 <small style="color:#64748b; display:block; margin-top:8px;">Máx. 10 MB por archivo.</small>
             </div>
-            <div id="previewEvidencias" style="margin-top:12px;"></div>
+            <div class="form-group" style="margin-top: 15px;">
+                <label>Observación (Opcional):</label>
+                <textarea id="observacionEvidencia" rows="3" placeholder="Escribe un comentario o detalle sobre esta evidencia..."></textarea>
+            </div>
             <div class="modal-botones">
                 <button class="btn-cancelar" onclick="cerrarModalEvidencia()">Cancelar</button>
                 <button class="btn-guardar" id="btnSubirEvidencias" style="background:#8b5cf6;" onclick="subirEvidencias()">Subir Archivos</button>
@@ -240,9 +240,7 @@
         </div>
     </div>
 
-    <!-- ========================================================= -->
-    <!-- NUEVO MODAL: VER EVIDENCIAS                                -->
-    <!-- ========================================================= -->
+    <!-- MODAL: VER EVIDENCIAS -->
     <div class="modal-overlay" id="modalVerEvidencias">
         <div class="modal-content" style="width: 700px;">
             <h2 style="color:#1e3a8a; margin-bottom:5px;">📂 Evidencias Subidas</h2>

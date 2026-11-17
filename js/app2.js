@@ -394,12 +394,9 @@ function dibujarTablaAgrupada(datos) {
                 total: 0, 
                 leves: 0,
                 graves: 0,
-                muyGraves: 0,
-                estado: 'FINALIZADO'
+                muyGraves: 0
             };
         }
-        
-        if (rep.estado === 'OBSERVADO') estudiantes[llaveUnica].estado = 'OBSERVADO';
 
         estudiantes[llaveUnica].total++;
         if (rep.tipo_falta === 'LEVE') estudiantes[llaveUnica].leves++;
@@ -413,13 +410,15 @@ function dibujarTablaAgrupada(datos) {
     const esAdmin = usuarioActual.rol === 'Administrador';
     const puedeEditar = esAdmin || usuarioActual.puede_editar === true;
     const puedeBorrar = esAdmin || usuarioActual.puede_borrar === true;
-    const puedeHabilitar = esAdmin || usuarioActual.puede_habilitar === true;
 
     let filasHTML = "";
 
     Object.values(estudiantes).forEach(est => {
         let colorFondo = "", colorBorde = "", textoEstado = "";
         
+        // REGLA DE NEGOCIO: 3 Leves = 1 Grave -> OBSERVADO
+        const esObservado = (est.graves > 0 || est.muyGraves > 0 || est.leves >= 3);
+
         if (est.muyGraves > 0) {
             colorFondo = "rgba(239, 68, 68, 0.05)"; colorBorde = "#ef4444"; textoEstado = "🔴 Muy Grave";
         } else if (est.graves > 0 || est.leves >= 3) {
@@ -429,32 +428,38 @@ function dibujarTablaAgrupada(datos) {
         }
 
         const caso = obtenerCaso(est.nombreReal, est.grado, est.seccion);
-        const estadoCaso = caso ? caso.estado_matricula : 'pendiente_habilitacion';
+        let estadoMatriculaHTML = "";
+        let botonCandadoHTML = "";
 
-        let textoEstadoGlobal = "";
-        if (estadoCaso === 'finalizado') {
-            textoEstadoGlobal = `<span style="background:#22c55e; color:white; padding:4px 8px; border-radius:12px; font-weight:bold; font-size:0.85rem;">✅ FINALIZADO</span>`;
-        } else if (estadoCaso === 'habilitado') {
-            textoEstadoGlobal = `<span style="background:#f59e0b; color:white; padding:4px 8px; border-radius:12px; font-weight:bold; font-size:0.85rem;">🔓 HABILITADO</span>`;
+        if (!esObservado) {
+            // Si es normal (1 o 2 leves)
+            estadoMatriculaHTML = `<span style="color:#64748b; font-weight:bold;">✅ Normal</span>`;
         } else {
-            textoEstadoGlobal = `<span style="color:#64748b; font-weight:bold; font-size:0.85rem;">⏳ Pendiente</span>`;
+            // Si es OBSERVADO
+            if (caso && caso.estado_matricula === 'finalizado') {
+                estadoMatriculaHTML = `<span style="background:#22c55e; color:white; padding:4px 8px; border-radius:12px; font-weight:bold; font-size:0.85rem;">✅ COMPROMISO CUMPLIDO</span>`;
+            } else if (caso && caso.evidencia_subida) {
+                estadoMatriculaHTML = `<span style="background:#f59e0b; color:white; padding:4px 8px; border-radius:12px; font-weight:bold; font-size:0.85rem;">🔓 HABILITADO</span>`;
+                botonCandadoHTML = `<button onclick="confirmarCompromiso('${est.nombreReal}', '${est.grado}', '${est.seccion}')" style="background:#10b981; color:white; border:none; padding:6px 10px; border-radius:6px; cursor:pointer; font-weight:bold; font-size:1.1rem;" title="Presionar para compromiso del padre">🔓</button>`;
+            } else {
+                // AQUI ESTA EL CAMBIO A OBSERVADO
+                estadoMatriculaHTML = `<span style="color:#ef4444; font-weight:bold; font-size:0.85rem;">⚠️ OBSERVADO</span>`;
+                botonCandadoHTML = `<button onclick="abrirModalEvidencia('${est.nombreReal}', '${est.grado}', '${est.seccion}')" style="background:#10b981; color:white; border:none; padding:6px 10px; border-radius:6px; cursor:pointer; font-weight:bold; font-size:1.1rem;" title="Subir Evidencia para abrir candado">🔒</button>`;
+            }
         }
 
         let botones = `<div style="display: flex; gap: 4px; justify-content: center; flex-wrap: wrap;">`;
         
         botones += `<button onclick="verHistorial('${est.nombreReal}', '${est.grado}', '${est.seccion}')" style="background:#3b82f6; color:white; border:none; padding:6px 9px; border-radius:6px; cursor:pointer; font-weight:bold;" title="Ver Historial">👁️</button>`;
+        
+        // Botón de candado (solo aparece si está observado)
+        if (botonCandadoHTML) {
+            botones += botonCandadoHTML;
+        }
+
+        // Botón extra para subir evidencia manualmente
         botones += `<button onclick="abrirModalEvidencia('${est.nombreReal}', '${est.grado}', '${est.seccion}')" style="background:#8b5cf6; color:white; border:none; padding:6px 9px; border-radius:6px; cursor:pointer; font-weight:bold;" title="Subir Evidencia">📎</button>`;
         botones += `<button onclick="verEvidencias('${est.nombreReal}', '${est.grado}', '${est.seccion}')" style="background:#0ea5e9; color:white; border:none; padding:6px 9px; border-radius:6px; cursor:pointer; font-weight:bold;" title="Ver Evidencias">📂</button>`;
-        
-        if (puedeHabilitar && estadoCaso === 'pendiente_habilitacion') {
-            botones += `<button onclick="habilitarFinalizacion('${est.nombreReal}', '${est.grado}', '${est.seccion}')" style="background:#10b981; color:white; border:none; padding:6px 9px; border-radius:6px; cursor:pointer; font-weight:bold;" title="Habilitar Finalización">🔓</button>`;
-        }
-        
-        if (estadoCaso === 'habilitado') {
-            botones += `<label style="display:inline-flex; align-items:center; gap:4px; background:#dcfce7; padding:6px 8px; border-radius:6px; font-weight:bold; color:#166534; cursor:pointer; font-size:0.8rem;" title="Marcar como Finalizado">
-                <input type="checkbox" onchange="finalizarCaso('${est.nombreReal}', '${est.grado}', '${est.seccion}', this)"> OK
-            </label>`;
-        }
         
         if (puedeEditar) {
             botones += `<button onclick="abrirModalEditarAlumno('${est.nombreReal}', '${est.grado}', '${est.seccion}')" style="background:#f59e0b; color:white; border:none; padding:6px 9px; border-radius:6px; cursor:pointer; font-weight:bold;" title="Editar Alumno">✏️</button>`;
@@ -473,7 +478,7 @@ function dibujarTablaAgrupada(datos) {
                 <td style="font-weight:bold; color: #64748b;">${est.seccion}</td>
                 <td><span style="background:#1e3a8a; color:white; padding:4px 8px; border-radius:12px; font-size:0.85rem; font-weight:bold;">${est.total} Falta(s)</span></td>
                 <td><span style="font-weight:bold; color:${colorBorde};">${textoEstado}</span></td>
-                <td>${textoEstadoGlobal}</td>
+                <td>${estadoMatriculaHTML}</td>
                 <td>${botones}</td>
             </tr>`;
     });
@@ -731,11 +736,9 @@ function exportarExcel() {
         if (!estudiantes[key]) {
             estudiantes[key] = { 
                 nombre: nombre, grado: grado, seccion: seccion, incidentes: [], 
-                leves: 0, graves: 0, muyGraves: 0, estado: 'FINALIZADO'
+                leves: 0, graves: 0, muyGraves: 0
             };
         }
-        
-        if (rep.estado === 'OBSERVADO') estudiantes[key].estado = 'OBSERVADO';
 
         estudiantes[key].incidentes.push(rep);
         if (estudiantes[key].incidentes.length > maxIncidentes) maxIncidentes = estudiantes[key].incidentes.length;
@@ -761,6 +764,17 @@ function exportarExcel() {
 
     Object.values(estudiantes).forEach(est => {
         est.incidentes.sort((a, b) => parseInt(a.numero_incidente) - parseInt(b.numero_incidente));
+        
+        const esObservado = (est.graves > 0 || est.muyGraves > 0 || est.leves >= 3);
+        const caso = obtenerCaso(est.nombre, est.grado, est.seccion);
+        
+        let estadoMatricula = "Normal";
+        if (esObservado) {
+            if (caso && caso.estado_matricula === 'finalizado') estadoMatricula = "Compromiso Cumplido";
+            else if (caso && caso.evidencia_subida) estadoMatricula = "Habilitado";
+            else estadoMatricula = "OBSERVADO";
+        }
+
         let reporteFinal = "";
         if (est.muyGraves > 0) reporteFinal = "🔴 Remisión a coordinación";
         else if (est.graves > 0 || est.leves >= 3) reporteFinal = "🟡 Llamado de atención";
@@ -772,7 +786,7 @@ function exportarExcel() {
             if(i.telefono_apoderado && !telefono) telefono = i.telefono_apoderado;
         });
 
-        let fila = [est.nombre, est.grado, est.seccion, est.estado];
+        let fila = [est.nombre, est.grado, est.seccion, estadoMatricula];
         for (let i = 0; i < maxIncidentes; i++) {
             const inc = est.incidentes[i] || null;
             fila.push(inc ? inc.numero_incidente : "", inc ? formatearFecha(inc.fecha) : "", inc ? inc.tipo_falta : "", inc ? inc.persona_reporta : "");
@@ -794,105 +808,7 @@ function exportarExcel() {
 }
 
 // ============================================================
-// HABILITACIÓN DE FINALIZACIÓN
-// ============================================================
-async function habilitarFinalizacion(nombre, grado, seccion) {
-    const userStr = localStorage.getItem('usuarioLogueado');
-    const usuarioActual = JSON.parse(userStr);
-    const esAdmin = usuarioActual.rol === 'Administrador';
-    const puedeHabilitar = esAdmin || usuarioActual.puede_habilitar === true;
-
-    if (!puedeHabilitar) {
-        return mostrarToast("No tienes permiso para habilitar la finalización", "error");
-    }
-    if (!confirm(`¿Habilitar la finalización del caso de "${nombre}"?`)) return;
-
-    const gradoDB = (!grado || grado === '-') ? null : grado;
-    const seccionDB = (!seccion || seccion === '-') ? null : seccion;
-
-    try {
-        const { data: existente } = await supabaseClient
-            .from('casos_estudiantes')
-            .select('id')
-            .eq('estudiante_nombre', nombre)
-            .eq('grado', gradoDB)
-            .eq('seccion', seccionDB)
-            .maybeSingle();
-
-        if (existente) {
-            const { error } = await supabaseClient
-                .from('casos_estudiantes')
-                .update({
-                    estado_matricula: 'habilitado',
-                    puede_finalizar: true,
-                    habilitado_por: usuarioActual.nombre,
-                    habilitado_en: new Date().toISOString()
-                })
-                .eq('id', existente.id);
-            if (error) throw error;
-        } else {
-            const { error } = await supabaseClient
-                .from('casos_estudiantes')
-                .insert({
-                    estudiante_nombre: nombre,
-                    grado: gradoDB,
-                    seccion: seccionDB,
-                    estado_matricula: 'habilitado',
-                    puede_finalizar: true,
-                    habilitado_por: usuarioActual.nombre,
-                    habilitado_en: new Date().toISOString()
-                });
-            if (error) throw error;
-        }
-
-        mostrarToast("✅ Finalización habilitada");
-        cargarTablaIncidentes();
-    } catch (error) {
-        mostrarToast("❌ Error al habilitar: " + error.message, "error");
-    }
-}
-
-async function finalizarCaso(nombre, grado, seccion, checkbox) {
-    if (!checkbox.checked) return;
-    if (!confirm(`¿Confirmas finalizar el caso de "${nombre}"?`)) {
-        checkbox.checked = false;
-        return;
-    }
-
-    const userStr = localStorage.getItem('usuarioLogueado');
-    const usuarioActual = JSON.parse(userStr);
-    const gradoDB = (!grado || grado === '-') ? null : grado;
-    const seccionDB = (!seccion || seccion === '-') ? null : seccion;
-
-    try {
-        const { error: errCaso } = await supabaseClient
-            .from('casos_estudiantes')
-            .update({
-                estado_matricula: 'finalizado',
-                puede_finalizar: false,
-                finalizado_por: usuarioActual.nombre,
-                finalizado_en: new Date().toISOString()
-            })
-            .eq('estudiante_nombre', nombre)
-            .eq('grado', gradoDB)
-            .eq('seccion', seccionDB);
-        if (errCaso) throw errCaso;
-
-        await supabaseClient
-            .from('incidentes')
-            .update({ estado: 'FINALIZADO' })
-            .match({ estudiante: nombre, grado: gradoDB, seccion: seccionDB });
-
-        mostrarToast("✅ Caso finalizado");
-        cargarTablaIncidentes();
-    } catch (error) {
-        checkbox.checked = false;
-        mostrarToast("❌ Error al finalizar: " + error.message, "error");
-    }
-}
-
-// ============================================================
-// EVIDENCIAS (SUBIR / VER / ELIMINAR)
+// SISTEMA DE CANDADOS Y EVIDENCIAS (SUBIR / VER / ELIMINAR)
 // ============================================================
 function abrirModalEvidencia(nombre, grado, seccion) {
     _contextoEvidencia = { nombre, grado, seccion };
@@ -990,11 +906,70 @@ async function subirEvidencias() {
     }
 
     btn.disabled = false;
-    btn.textContent = 'Subir';
+    btn.textContent = 'Subir Archivos';
 
     if (subidos > 0) {
-        mostrarToast(`✅ ${subidos} archivo(s) subido(s)`);
+        // ACTUALIZAR EL CASO A HABILITADO (CANDADO ABIERTO)
+        const { data: existente } = await supabaseClient
+            .from('casos_estudiantes')
+            .select('id')
+            .eq('estudiante_nombre', nombre)
+            .eq('grado', gradoDB)
+            .eq('seccion', seccionDB)
+            .maybeSingle();
+
+        if (existente) {
+            await supabaseClient.from('casos_estudiantes').update({
+                estado_matricula: 'habilitado',
+                evidencia_subida: true
+            }).eq('id', existente.id);
+        } else {
+            await supabaseClient.from('casos_estudiantes').insert({
+                estudiante_nombre: nombre,
+                grado: gradoDB,
+                seccion: seccionDB,
+                estado_matricula: 'habilitado',
+                evidencia_subida: true
+            });
+        }
+
+        mostrarToast(`✅ ${subidos} archivo(s) subido(s). Candado Abierto.`);
         cerrarModalEvidencia();
+        cargarTablaIncidentes();
+    }
+}
+
+// Confirmar el compromiso del padre (Clic en candado abierto)
+async function confirmarCompromiso(nombre, grado, seccion) {
+    const confirmar = confirm(`⚠️ ¿El padre/apoderado de "${nombre}" se compromete a cumplir con las medidas correctivas?\n\nAl aceptar, el caso pasará a COMPROMISO CUMPLIDO.`);
+    
+    if (!confirmar) return;
+
+    const gradoDB = (!grado || grado === '-') ? null : grado;
+    const seccionDB = (!seccion || seccion === '-') ? null : seccion;
+    const userStr = localStorage.getItem('usuarioLogueado');
+    const usuarioActual = JSON.parse(userStr);
+
+    try {
+        const { error } = await supabaseClient.from('casos_estudiantes').update({
+            estado_matricula: 'finalizado',
+            finalizado_por: usuarioActual.nombre,
+            finalizado_en: new Date().toISOString()
+        })
+        .eq('estudiante_nombre', nombre)
+        .eq('grado', gradoDB)
+        .eq('seccion', seccionDB);
+
+        if (error) throw error;
+
+        // Opcional: actualizar también la tabla incidentes
+        await supabaseClient.from('incidentes').update({ estado: 'FINALIZADO' })
+            .match({ estudiante: nombre, grado: gradoDB, seccion: seccionDB });
+
+        mostrarToast('✅ Compromiso del padre registrado');
+        cargarTablaIncidentes(); 
+    } catch (error) {
+        mostrarToast('❌ Error al registrar compromiso: ' + error.message, 'error');
     }
 }
 
@@ -1077,13 +1052,14 @@ async function eliminarEvidencia(id) {
         if (error) throw error;
         mostrarToast('🗑️ Evidencia eliminada');
         cerrarModalVerEvidencias();
+        cargarTablaIncidentes(); // Recargar para actualizar el estado si es necesario
     } catch (error) {
         mostrarToast('❌ Error: ' + error.message, 'error');
     }
 }
 
 // ============================================================
-// INYECCIÓN DINÁMICA DE MODALES (ACTUALIZADO)
+// INYECCIÓN DINÁMICA DE MODALES
 // ============================================================
 function inyectarModalesSiNoExisten() {
     if (!document.getElementById('modalSubirEvidencia')) {
@@ -1127,34 +1103,6 @@ function inyectarModalesSiNoExisten() {
             </div>
         `;
         document.body.appendChild(modalVer.firstElementChild);
-    }
-
-    const modalAdmin = document.getElementById('modalAdmin');
-    if (modalAdmin) {
-        modalAdmin.innerHTML = `
-            <div class="modal-content" style="width: 800px;">
-                <h2>⚙️ Administración de Permisos</h2>
-                <p style="color: #64748b; margin-bottom: 20px; font-size: 0.9rem;">Activa permisos o elimina usuarios del sistema.</p>
-                <div style="max-height: 400px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 8px;">
-                    <table style="width: 100%; border-collapse: collapse;">
-                        <thead>
-                            <tr style="background: #f8fafc; color: #1e3a8a; border-bottom: 2px solid #e2e8f0;">
-                                <th style="padding: 12px; text-align: left;">Usuario</th>
-                                <th style="padding: 12px; text-align: left;">Rol</th>
-                                <th style="padding: 12px; text-align: center;">Editar</th>
-                                <th style="padding: 12px; text-align: center;">Borrar</th>
-                                <th style="padding: 12px; text-align: center;">Habilitar</th>
-                                <th style="padding: 12px; text-align: center;">Eliminar</th>
-                            </tr>
-                        </thead>
-                        <tbody id="cuerpoAdmin"></tbody>
-                    </table>
-                </div>
-                <div class="modal-botones" style="margin-top: 20px;">
-                    <button class="btn-cancelar" onclick="cerrarModalAdmin()">Cerrar</button>
-                </div>
-            </div>
-        `;
     }
 }
 
