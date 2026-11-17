@@ -435,15 +435,20 @@ function dibujarTablaAgrupada(datos) {
             // Si es normal (1 o 2 leves)
             estadoMatriculaHTML = `<span style="color:#64748b; font-weight:bold;">✅ Normal</span>`;
         } else {
-            // Si es OBSERVADO
+            // MANTENEMOS SIEMPRE "OBSERVADO"
+            let baseObs = `<span style="color:#ef4444; font-weight:bold; font-size:0.85rem; display:block;">⚠️ OBSERVADO</span>`;
+
             if (caso && caso.estado_matricula === 'finalizado') {
-                estadoMatriculaHTML = `<span style="background:#22c55e; color:white; padding:4px 8px; border-radius:12px; font-weight:bold; font-size:0.85rem;">✅ COMPROMISO CUMPLIDO</span>`;
+                // Compromiso confirmado
+                estadoMatriculaHTML = baseObs + `<span style="background:#22c55e; color:white; padding:2px 6px; border-radius:10px; font-weight:bold; font-size:0.7rem; display:inline-block; margin-top:4px;">✅ Compromiso Activado</span>`;
+                // Ocultamos el candado porque ya terminó el proceso
             } else if (caso && caso.evidencia_subida) {
-                estadoMatriculaHTML = `<span style="background:#f59e0b; color:white; padding:4px 8px; border-radius:12px; font-weight:bold; font-size:0.85rem;">🔓 HABILITADO</span>`;
+                // Evidencia subida, falta confirmar compromiso
+                estadoMatriculaHTML = baseObs + `<span style="background:#f59e0b; color:white; padding:2px 6px; border-radius:10px; font-weight:bold; font-size:0.7rem; display:inline-block; margin-top:4px;">📎 Evidencia Subida</span>`;
                 botonCandadoHTML = `<button onclick="confirmarCompromiso('${est.nombreReal}', '${est.grado}', '${est.seccion}')" style="background:#10b981; color:white; border:none; padding:6px 10px; border-radius:6px; cursor:pointer; font-weight:bold; font-size:1.1rem;" title="Presionar para compromiso del padre">🔓</button>`;
             } else {
-                // AQUI ESTA EL CAMBIO A OBSERVADO
-                estadoMatriculaHTML = `<span style="color:#ef4444; font-weight:bold; font-size:0.85rem;">⚠️ OBSERVADO</span>`;
+                // Solo observado, sin evidencia
+                estadoMatriculaHTML = baseObs;
                 botonCandadoHTML = `<button onclick="abrirModalEvidencia('${est.nombreReal}', '${est.grado}', '${est.seccion}')" style="background:#10b981; color:white; border:none; padding:6px 10px; border-radius:6px; cursor:pointer; font-weight:bold; font-size:1.1rem;" title="Subir Evidencia para abrir candado">🔒</button>`;
             }
         }
@@ -770,8 +775,8 @@ function exportarExcel() {
         
         let estadoMatricula = "Normal";
         if (esObservado) {
-            if (caso && caso.estado_matricula === 'finalizado') estadoMatricula = "Compromiso Cumplido";
-            else if (caso && caso.evidencia_subida) estadoMatricula = "Habilitado";
+            if (caso && caso.estado_matricula === 'finalizado') estadoMatricula = "OBSERVADO - Compromiso Activado";
+            else if (caso && caso.evidencia_subida) estadoMatricula = "OBSERVADO - Evidencia Subida";
             else estadoMatricula = "OBSERVADO";
         }
 
@@ -813,7 +818,6 @@ function exportarExcel() {
 function abrirModalEvidencia(nombre, grado, seccion) {
     _contextoEvidencia = { nombre, grado, seccion };
     
-    // Forzamos a que si el modal existe pero no tiene el textarea, lo recreamos
     const modalViejo = document.getElementById('modalSubirEvidencia');
     if (!modalViejo || !document.getElementById('observacionEvidencia')) {
         if(modalViejo) modalViejo.remove();
