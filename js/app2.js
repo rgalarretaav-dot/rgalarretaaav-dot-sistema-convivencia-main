@@ -845,72 +845,98 @@ function cerrarModalEvidencia() {
 
 async function subirEvidencias() {
     if (!_contextoEvidencia) return;
+    
     const input = document.getElementById('inputEvidencias');
     const files = input.files;
-    if (!files || files.length === 0) {
-        return mostrarToast("Selecciona al menos un archivo", "error");
+    const obsInput = document.getElementById('observacionEvidencia');
+    const observacion = obsInput ? obsInput.value.trim() : '';
+
+    // VALIDACIÓN CLAVE: Permite guardar si hay archivos O si hay observación escrita
+    if ((!files || files.length === 0) && !observacion) {
+        return mostrarToast("Selecciona un archivo o escribe una observación", "error");
     }
 
     const btn = document.getElementById('btnSubirEvidencias');
     btn.disabled = true;
-    btn.textContent = 'Subiendo...';
+    btn.textContent = 'Guardando...';
 
     const { nombre, grado, seccion } = _contextoEvidencia;
-    const obsInput = document.getElementById('observacionEvidencia');
-    const observacion = obsInput ? obsInput.value : '';
-    
     const gradoDB = (!grado || grado === '-') ? null : grado;
     const seccionDB = (!seccion || seccion === '-') ? null : seccion;
     const userStr = localStorage.getItem('usuarioLogueado');
     const usuarioActual = JSON.parse(userStr);
     let subidos = 0;
 
-    for (const file of files) {
-        if (file.size > 10 * 1024 * 1024) {
-            alert(`"${file.name}" supera los 10 MB. Se omite.`);
-            continue;
+    // 1. SI HAY ARCHIVOS, LOS SUBIMOS
+    if (files && files.length > 0) {
+        for (const file of files) {
+            if (file.size > 10 * 1024 * 1024) {
+                alert(`"${file.name}" supera los 10 MB. Se omite.`);
+                continue;
+            }
+
+            const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+            const folderName = nombre.replace(/[^a-zA-Z0-9]/g, '_');
+            const path = `${folderName}/${Date.now()}_${safeName}`;
+
+            const { error: upErr } = await supabaseClient.storage
+                .from('evidencias')
+                .upload(path, file, { upsert: false });
+
+            if (upErr) {
+                console.error(upErr);
+                alert(`Error subiendo "${file.name}": ${upErr.message}`);
+                continue;
+            }
+
+            const { data: urlData } = supabaseClient.storage
+                .from('evidencias')
+                .getPublicUrl(path);
+
+            const { error: dbErr } = await supabaseClient.from('evidencias').insert({
+                estudiante_nombre: nombre,
+                grado: gradoDB,
+                seccion: seccionDB,
+                archivo_nombre: file.name,
+                archivo_url: urlData.publicUrl,
+                mime_type: file.type || 'application/octet-stream',
+                tamano: file.size,
+                subido_por: usuarioActual.nombre,
+                observacion: observacion || null
+            });
+
+            if (dbErr) {
+                console.error(dbErr);
+                alert(`Error guardando registro de "${file.name}": ${dbErr.message}`);
+                continue;
+            }
+            subidos++;
         }
-
-        const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-        const folderName = nombre.replace(/[^a-zA-Z0-9]/g, '_');
-        const path = `${folderName}/${Date.now()}_${safeName}`;
-
-        const { error: upErr } = await supabaseClient.storage
-            .from('evidencias')
-            .upload(path, file, { upsert: false });
-
-        if (upErr) {
-            console.error(upErr);
-            alert(`Error subiendo "${file.name}": ${upErr.message}`);
-            continue;
-        }
-
-        const { data: urlData } = supabaseClient.storage
-            .from('evidencias')
-            .getPublicUrl(path);
-
+    } 
+    // 2. SI NO HAY ARCHIVOS, PERO SÍ HAY OBSERVACIÓN (TEXTO)
+    else if (observacion) {
         const { error: dbErr } = await supabaseClient.from('evidencias').insert({
             estudiante_nombre: nombre,
             grado: gradoDB,
             seccion: seccionDB,
-            archivo_nombre: file.name,
-            archivo_url: urlData.publicUrl,
-            mime_type: file.type || 'application/octet-stream',
-            tamano: file.size,
+            archivo_nombre: 'Nota de observación',
+            archivo_url: '', // Se envía vacío porque no hay archivo
+            mime_type: 'text/plain',
+            tamano: 0,
             subido_por: usuarioActual.nombre,
-            observacion: observacion || null
+            observacion: observacion
         });
 
         if (dbErr) {
             console.error(dbErr);
-            alert(`Error guardando registro de "${file.name}": ${dbErr.message}`);
-            continue;
+            alert(`Error guardando la observación: ${dbErr.message}`);
+        } else {
+            subidos++;
         }
-        subidos++;
     }
 
     btn.disabled = false;
-    btn.textContent = 'Subir Archivos';
+    btn.textContent = 'Guardar Evidencia';
 
     if (subidos > 0) {
         // ACTUALIZAR EL CASO A HABILITADO (CANDADO ABIERTO)
@@ -937,7 +963,7 @@ async function subirEvidencias() {
             });
         }
 
-        mostrarToast(`✅ ${subidos} archivo(s) subido(s). Candado Abierto.`);
+        mostrarToast(`✅ Evidencia/Nota guardada. Candado Abierto.`);
         cerrarModalEvidencia();
         cargarTablaIncidentes();
     }
@@ -1017,16 +1043,26 @@ async function verEvidencias(nombre, grado, seccion) {
         if (cont) {
             cont.innerHTML = data.map(e => {
                 const fecha = new Date(e.created_at).toLocaleString('es-PE');
-                const peso = (e.tamano / 1024).toFixed(1) + ' KB';
+                const peso = e.tamano > 0 ? (e.tamano / 1024).toFixed(1) + ' KB' : 'Sin archivo';
+                
+                // Si no hay archivo adjunto, mostramos solo la observación
+                const enlaceArchivo = e.archivo_url ? 
+                    `<a href="${e.archivo_url}" target="_blank" rel="noopener" style="color:#3b82f6; font-weight:600; text-decoration:none; word-break:break-all;">📄 ${e.archivo_nombre}</a>` : 
+                    `<span style="color:#64748b; font-weight:600;">📝 Nota de observación</span>`;
+
+                const botonVer = e.archivo_url ? 
+                    `<a href="${e.archivo_url}" target="_blank" rel="noopener" style="background:#3b82f6; color:white; padding:6px 10px; border-radius:6px; text-decoration:none; font-size:0.85rem; font-weight:600;">Ver</a>` : 
+                    '';
+
                 return `
                     <div style="display:flex; justify-content:space-between; align-items:center; padding:12px; border-bottom:1px solid #e2e8f0; gap:10px;">
                         <div style="flex:1; min-width:0;">
-                            <a href="${e.archivo_url}" target="_blank" rel="noopener" style="color:#3b82f6; font-weight:600; text-decoration:none; word-break:break-all;">📄 ${e.archivo_nombre}</a>
+                            ${enlaceArchivo}
                             <div style="font-size:0.75rem; color:#64748b; margin-top:4px;">${fecha} · ${peso} · ${e.subido_por || 'N/A'}</div>
                             ${e.observacion ? `<div style="font-size:0.85rem; color:#334155; font-style:italic; margin-top:6px; padding:6px; background:#f1f5f9; border-radius:4px;">📝 <b>Obs:</b> ${e.observacion}</div>` : ''}
                         </div>
                         <div style="display:flex; gap:6px;">
-                            <a href="${e.archivo_url}" target="_blank" rel="noopener" style="background:#3b82f6; color:white; padding:6px 10px; border-radius:6px; text-decoration:none; font-size:0.85rem; font-weight:600;">Ver</a>
+                            ${botonVer}
                             ${esAdmin ? `<button onclick="eliminarEvidencia(${e.id})" style="background:#ef4444; color:white; border:none; padding:6px 10px; border-radius:6px; cursor:pointer; font-weight:600;">🗑️</button>` : ''}
                         </div>
                     </div>
@@ -1066,7 +1102,13 @@ async function eliminarEvidencia(id) {
 // INYECCIÓN DINÁMICA DE MODALES
 // ============================================================
 function inyectarModalesSiNoExisten() {
-    if (!document.getElementById('modalSubirEvidencia')) {
+    // Si el modal existe pero NO tiene el cuadro de texto, lo destruimos para crearlo bien
+    const modalSubirExistente = document.getElementById('modalSubirEvidencia');
+    const tieneTextarea = document.getElementById('observacionEvidencia');
+
+    if (!modalSubirExistente || !tieneTextarea) {
+        if (modalSubirExistente) modalSubirExistente.remove();
+
         const modalSubir = document.createElement('div');
         modalSubir.innerHTML = `
             <div class="modal-overlay" id="modalSubirEvidencia">
@@ -1084,7 +1126,7 @@ function inyectarModalesSiNoExisten() {
                     </div>
                     <div class="modal-botones">
                         <button class="btn-cancelar" onclick="cerrarModalEvidencia()">Cancelar</button>
-                        <button class="btn-guardar" id="btnSubirEvidencias" style="background:#8b5cf6;" onclick="subirEvidencias()">Subir Archivos</button>
+                        <button class="btn-guardar" id="btnSubirEvidencias" style="background:#8b5cf6;" onclick="subirEvidencias()">Guardar Evidencia</button>
                     </div>
                 </div>
             </div>
@@ -1097,7 +1139,7 @@ function inyectarModalesSiNoExisten() {
         modalVer.innerHTML = `
             <div class="modal-overlay" id="modalVerEvidencias">
                 <div class="modal-content" style="width: 700px;">
-                    <h2 style="color:#1e3a8a; margin-bottom:5px;">📂 Evidencias Subidas</h2>
+                    <h2 style="color:#1e3a8a; margin-bottom:5px;">📂 Evidencias y Notas</h2>
                     <p id="verEvidenciasContexto" style="color:#475569; margin-bottom:15px; font-size:0.9rem;"></p>
                     <div id="listaEvidencias" style="max-height:400px; overflow-y:auto; border:1px solid #e2e8f0; border-radius:8px;"></div>
                     <div class="modal-botones" style="margin-top:20px;">
