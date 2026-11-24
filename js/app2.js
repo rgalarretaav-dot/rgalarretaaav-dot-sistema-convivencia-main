@@ -507,7 +507,7 @@ function filtrarTabla() {
 }
 
 // ==========================================
-// EDITAR ALUMNO COMPLETO
+// EDITAR ALUMNO COMPLETO (ARREGLADO)
 // ==========================================
 function abrirModalEditarAlumno(nombre, grado, seccion) {
     const incidentesAlumno = listaIncidentesGlobal.filter(rep => 
@@ -527,7 +527,14 @@ function abrirModalEditarAlumno(nombre, grado, seccion) {
     document.getElementById('editTelefonoApoderado').value = primerIncidente.telefono_apoderado || '';
     document.getElementById('editNumeroIncidente').value = primerIncidente.numero_incidente;
     document.getElementById('editTipoFalta').value = primerIncidente.tipo_falta;
-    document.getElementById('editFechaIncidente').value = primerIncidente.fecha;
+    
+    // ARREGLO DE FECHA: Formateamos la fecha para que el input type="date" la muestre correctamente
+    let fechaFormateada = '';
+    if (primerIncidente.fecha) {
+        fechaFormateada = primerIncidente.fecha.split('T')[0]; // Corta la hora si la tiene
+    }
+    document.getElementById('editFechaIncidente').value = fechaFormateada;
+    
     document.getElementById('editPersonaReporta').value = primerIncidente.persona_reporta;
     document.getElementById('editDescripcionIncidente').value = primerIncidente.descripcion;
 
@@ -550,25 +557,64 @@ async function guardarEdicionIncidente() {
     const nuevaFecha = document.getElementById('editFechaIncidente').value;
     const nuevaPersona = document.getElementById('editPersonaReporta').value;
     const nuevaDescripcion = document.getElementById('editDescripcionIncidente').value;
+    const idIncidente = document.getElementById('editIdIncidente').value;
 
     if (!nuevoNombre || !nuevoGrado || !nuevaSeccion || !nuevoCorreo || !nuevoNumero || !nuevaFecha || !nuevaPersona || !nuevaDescripcion) {
         return mostrarToast("Completa todos los campos", "error");
     }
 
     try {
-        const { error } = await supabaseClient
+        // 1. Actualizamos los datos del ESTUDIANTE en TODOS sus incidentes (Nombre, grado, sección, correo)
+        const { error: errorGeneral } = await supabaseClient
             .from('incidentes')
             .update({ 
-                estudiante: nuevoNombre, grado: nuevoGrado, seccion: nuevaSeccion, correo_apoderado: nuevoCorreo,
-                telefono_apoderado: nuevoTelefono,
-                numero_incidente: nuevoNumero, tipo_falta: nuevoTipo, fecha: nuevaFecha, persona_reporta: nuevaPersona, descripcion: nuevaDescripcion
+                estudiante: nuevoNombre, 
+                grado: nuevoGrado, 
+                seccion: nuevaSeccion, 
+                correo_apoderado: nuevoCorreo,
+                telefono_apoderado: nuevoTelefono
             })
             .match({ 
                 estudiante: window.datosViejosEdicion.nombre, 
                 grado: window.datosViejosEdicion.grado === '-' ? null : window.datosViejosEdicion.grado, 
                 seccion: window.datosViejosEdicion.seccion === '-' ? null : window.datosViejosEdicion.seccion 
             });
-        if (error) throw error;
+        
+        if (errorGeneral) throw errorGeneral;
+
+        // 2. Actualizamos los detalles del INCIDENTE ESPECÍFICO (Fecha, descripción, tipo, etc.) 
+        // Esto evita que la fecha se modifique en todos los incidentes del alumno.
+        const { error: errorEspecifico } = await supabaseClient
+            .from('incidentes')
+            .update({ 
+                numero_incidente: nuevoNumero, 
+                tipo_falta: nuevoTipo, 
+                fecha: nuevaFecha, 
+                persona_reporta: nuevaPersona, 
+                descripcion: nuevaDescripcion
+            })
+            .eq('id', idIncidente);
+
+        if (errorEspecifico) throw errorEspecifico;
+
+        // 3. Actualizamos también en la tabla de casos para que no se pierda el candado
+        const gradoViejoDB = window.datosViejosEdicion.grado === '-' ? null : window.datosViejosEdicion.grado;
+        const seccionViejaDB = window.datosViejosEdicion.seccion === '-' ? null : window.datosViejosEdicion.seccion;
+        const nuevoGradoDB = nuevoGrado === '-' ? null : nuevoGrado;
+        const nuevaSeccionDB = nuevaSeccion === '-' ? null : nuevaSeccion;
+
+        await supabaseClient.from('casos_estudiantes')
+            .update({ 
+                estudiante_nombre: nuevoNombre, 
+                grado: nuevoGradoDB, 
+                seccion: nuevaSeccionDB 
+            })
+            .match({ 
+                estudiante_nombre: window.datosViejosEdicion.nombre, 
+                grado: gradoViejoDB, 
+                seccion: seccionViejaDB
+            });
+
         mostrarToast("✅ Datos actualizados correctamente");
         cerrarModalEditarIncidente();
         cargarTablaIncidentes(); 
